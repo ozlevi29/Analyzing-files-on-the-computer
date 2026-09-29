@@ -110,8 +110,7 @@ const STR = {
     shareReady: ["הטקסט של הפוסט הועתק ללוח.", "תמונת הכרטיס נשמרה בקובץ: {path}"],
     shareSteps: ["לחץ \"פתח את {site}\" למטה. ייפתח חלון של פוסט חדש.", "אם הטקסט לא מופיע, לחץ בתוך הפוסט ואז Ctrl+V.",
       "לחץ על סמל התמונה בחלון הפוסט, ובחר את הקובץ pc-doctor-result.png מתיקיית ההורדות.", "פרסם."],
-    shareNote: "קישור ל-GitHub מופיע בתוך הטקסט. אם הריפו עדיין פרטי, הקישור לא ייפתח לאחרים, והאתר לא יציג לו תצוגה מקדימה.",
-    shareReadyTitle: "מה כבר מוכן", shareStepsTitle: "מה לעשות",
+    shareReadyTitle: "מה כבר מוכן", shareStepsTitle: "מה לעשות", openImgLoc: "פתיחת מיקום התמונה", hideShare: "סגור",
     shareText: "ניקיתי {size} מהמחשב עם רופא המחשב, כלי חינמי בקוד פתוח שמסביר כל פעולה לפני שהוא מבצע אותה.{free}{mem}\n{url}",
     shareTextFree: " המקום הפנוי בדיסק עלה מ-{a} ל-{b}.", shareTextMem: " הזיכרון בשימוש ירד מ-{a}% ל-{b}%.",
     // about
@@ -220,8 +219,7 @@ const STR = {
     shareReady: ["The post text was copied to the clipboard.", "The card image was saved as: {path}"],
     shareSteps: ["Click \"Open {site}\" below. A new post window opens.", "If the text is not there, click inside the post and press Ctrl+V.",
       "Click the photo icon in the post window, and choose pc-doctor-result.png from your Downloads folder.", "Post."],
-    shareNote: "The GitHub link is inside the text. If the repository is still private, the link will not open for others and the site will not show a preview for it.",
-    shareReadyTitle: "Already done", shareStepsTitle: "What to do",
+    shareReadyTitle: "Already done", shareStepsTitle: "What to do", openImgLoc: "Open image location", hideShare: "Close",
     shareText: "I cleaned up {size} on my PC with PC Doctor, a free open-source tool that explains every action before it runs.{free}{mem}\n{url}",
     shareTextFree: " Free disk space went from {a} to {b}.", shareTextMem: " Memory in use dropped from {a}% to {b}%.",
     // about
@@ -920,13 +918,16 @@ function cardData() {
 
 const plain = (s) => s.replace(/[⁦⁩]/g, "");
 
+let shareHiddenAt = -1;  // number of actions when the user closed the share card
+
 function shareSection() {
   const d = cardData();
-  if (!d) return "";
+  if (!d || STATE.stats.actions <= shareHiddenAt) return "";
   return `<section class="share">
     <div class="share-head">
       <div><h2 class="section-title" style="margin:0">${esc(L("shareTitle"))}</h2>
       <p class="section-sub" style="margin:4px 0 0">${esc(L("shareSub"))}</p></div>
+      <button class="btn ghost small" id="hideShare">✕ ${esc(L("hideShare"))}</button>
     </div>
     <canvas id="card" width="1200" height="630" aria-label="${esc(L("shareTitle"))}"></canvas>
     <div class="card-actions">
@@ -1025,6 +1026,7 @@ function shareText(d) {
 function bindShare() {
   const canvas = $("#card");
   if (!canvas) return;
+  $("#hideShare").onclick = () => { shareHiddenAt = STATE.stats.actions; renderReport(); };
   const d = cardData();
   drawCard(canvas, d);
   const saveCard = (show) => api("/api/save_card", { png: canvas.toDataURL("image/png"), show }).then((r) => r.path);
@@ -1046,11 +1048,12 @@ function bindShare() {
       await navigator.clipboard.writeText(text);
     } catch (e) { toast(L("failed") + e.message, 8000); return; }
     const html = `<p>${esc(L("shareHowIntro"))}</p>` +
-      sec(L("shareReadyTitle"), li(L("shareReady").map((x) => x.replace("{path}", path)), "ok-list")) +
-      sec(L("shareStepsTitle"), `<ol class="steps-ol">${L("shareSteps").map((x) => `<li>${esc(x.replace("{site}", siteName))}</li>`).join("")}</ol>`) +
-      `<p class="small muted">${esc(L("shareNote"))}</p>`;
+      sec(L("shareReadyTitle"), li(L("shareReady").map((x) => x.replace("{path}", path)), "ok-list") +
+        `<button class="btn small" id="openImgLoc">${esc(L("openImgLoc"))}</button>`) +
+      sec(L("shareStepsTitle"), `<ol class="steps-ol">${L("shareSteps").map((x) => `<li>${esc(x.replace("{site}", siteName))}</li>`).join("")}</ol>`);
     openInfo(L("shareHowTitle", { site: siteName }), html, L("shareOpen", { site: siteName }), () =>
       api("/api/open_link", { site, text }).catch((e) => toast(e.message)));
+    $("#openImgLoc").onclick = () => api("/api/show_card", {}).catch((e) => toast(e.message));
   }));
 }
 

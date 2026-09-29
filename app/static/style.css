@@ -278,3 +278,5 @@ details.rule-sec > summary .sz { margin-inline-start: auto; font-variant-numeric
 .link-btn { font: inherit; background: none; border: 0; padding: 2px 0; color: var(--accent); cursor: pointer; text-decoration: underline; }
 .steps-ol { margin: 0; padding-inline-start: 22px; }
 .steps-ol li { margin: 4px 0; }
+.share-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+#openImgLoc { margin-top: 6px; }

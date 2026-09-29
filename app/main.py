@@ -435,6 +435,14 @@ class Handler(BaseHTTPRequestHandler):
                 url += "&text=" + quote(str(body["text"])[:2500])  # LinkedIn pre-fills the post with this text
             open_in_browser(url)
             return dict(ok=True)
+        if path == "/api/show_card":
+            # Opens File Explorer at the saved share card (fixed file name in Downloads).
+            out = os.path.join(os.path.expanduser("~"), "Downloads", "pc-doctor-result.png")
+            if os.path.exists(out):
+                subprocess.Popen(["explorer", "/select,", out])
+            else:
+                os.startfile(os.path.dirname(out))
+            return dict(ok=True)
         if path == "/api/save_card":
             # Saves the share card PNG to the Downloads folder (fixed file name) and shows it in Explorer.
             data = str(body.get("png", ""))
