@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>רופא המחשב</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <div class="logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M3 4h18v12H3zM1 18h22v2H1z" opacity=".25"/><path fill="none" stroke="currentColor" stroke-width="2" d="M5 11h3l2-4 3 7 2-3h4"/></svg>
+    </div>
+    <div>
+      <h1>רופא המחשב</h1>
+      <div class="sub">אבחון, ניקוי והסבר מסודר לכל פעולה</div>
+    </div>
+  </div>
+  <div class="diskbox" id="diskbox"></div>
+  <div class="top-actions">
+    <span class="badge" id="adminBadge"></span>
+    <button class="btn ghost" id="quitBtn">יציאה</button>
+  </div>
+</header>
+
+<main>
+  <!-- מסך פתיחה -->
+  <section id="intro" class="panel intro">
+    <h2>למה המחשב איטי?</h2>
+    <p>הסריקה בודקת את הזיכרון, המעבד, התוכנות שנפתחות עם המחשב, החיבור לאינטרנט ואת כל הקבצים בכונן C.
+      בסוף תקבל הסבר למה המחשב איטי, ורשימת צעדי טיפול. ליד כל צעד יש כפתור <b>טפל</b>.</p>
+    <p class="muted">שום דבר לא נמחק ולא משתנה בזמן הסריקה. לפני כל פעולה יופיע חלון שמסביר בדיוק מה יקרה, ורק אחרי שתאשר היא תתבצע.</p>
+    <label class="check"><input type="checkbox" id="deepChk" checked> סריקה מלאה של כל הכונן (לוקחת כמה דקות, ומוצאת קבצים ותיקיות גדולים)</label>
+    <button class="btn primary big" id="scanBtn">סרוק את המחשב</button>
+  </section>
+
+  <!-- התקדמות -->
+  <section id="progress" class="panel hidden">
+    <h2 id="progLabel">סורק…</h2>
+    <div class="bar"><div id="progBar"></div></div>
+    <div class="prog-meta"><span id="progPct">0%</span><span id="progFiles"></span></div>
+    <div class="muted small mono" id="progDetail"></div>
+    <button class="btn ghost" id="cancelBtn">דלג על סריקת הכונן המלאה</button>
+  </section>
+
+  <!-- תוצאות -->
+  <section id="results" class="hidden">
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="report">למה המחשב איטי</button>
+      <button class="tab" data-tab="clean">מה אפשר למחוק</button>
+      <button class="tab" data-tab="disk">קבצים ותיקיות גדולים</button>
+      <button class="tab" data-tab="system">פרטי מערכת</button>
+      <span class="spacer"></span>
+      <button class="btn ghost small" id="rescanBtn">סריקה חוזרת</button>
+    </nav>
+    <div class="tabpane" id="tab-report"></div>
+    <div class="tabpane hidden" id="tab-clean"></div>
+    <div class="tabpane hidden" id="tab-disk"></div>
+    <div class="tabpane hidden" id="tab-system"></div>
+  </section>
+</main>
+
+<!-- חלון אישור -->
+<div class="modal hidden" id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <div class="modal-card">
+    <div class="modal-head">
+      <span class="warn-ic" aria-hidden="true">!</span>
+      <h3 id="mTitle">האם אתה בטוח?</h3>
+    </div>
+    <div class="modal-body">
+      <div class="m-label">מה יקרה:</div>
+      <div id="mText" class="m-text"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn primary" id="mYes">כן, בצע</button>
+      <button class="btn ghost" id="mNo">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
