@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+PackageIdentifier: OzLevi.PCDoctor
+PackageVersion: 1.0.0
+InstallerType: portable
+Commands:
+  - pcdoctor
+ReleaseDate: 2026-09-29
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/ozlevi29/Analyzing-files-on-the-computer/releases/download/v1.0.0/PCDoctor.exe
+    InstallerSha256: DC2A207F094E5C27DA7665D3603A55C3DC82C8302B38D6A3BCD0B445AF2FF841
+ManifestType: installer
+ManifestVersion: 1.6.0

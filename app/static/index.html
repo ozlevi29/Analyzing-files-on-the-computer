@@ -13,13 +13,14 @@
       <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M3 4h18v12H3zM1 18h22v2H1z" opacity=".25"/><path fill="none" stroke="currentColor" stroke-width="2" d="M5 11h3l2-4 3 7 2-3h4"/></svg>
     </div>
     <div>
-      <h1 data-i18n="appName"></h1>
+      <h1><span data-i18n="appName"></span> <span class="ver" id="ver"></span></h1>
       <div class="sub" data-i18n="appSub"></div>
     </div>
   </div>
   <div class="diskbox" id="diskbox"></div>
   <div class="top-actions">
     <span class="badge" id="adminBadge"></span>
+    <button class="btn ghost small hidden" id="adminBtn"></button>
     <button class="btn ghost small" id="langBtn" data-i18n="langBtn"></button>
     <button class="btn ghost" id="quitBtn" data-i18n="quit"></button>
   </div>
@@ -51,6 +52,7 @@
       <button class="tab" data-tab="clean" data-i18n="tabClean"></button>
       <button class="tab" data-tab="disk" data-i18n="tabDisk"></button>
       <button class="tab" data-tab="system" data-i18n="tabSystem"></button>
+      <button class="tab" data-tab="undo"><span data-i18n="tabUndo"></span> <span id="undoCount"></span></button>
       <span class="spacer"></span>
       <button class="btn ghost small" id="rescanBtn" data-i18n="rescan"></button>
     </nav>
@@ -58,6 +60,7 @@
     <div class="tabpane hidden" id="tab-clean"></div>
     <div class="tabpane hidden" id="tab-disk"></div>
     <div class="tabpane hidden" id="tab-system"></div>
+    <div class="tabpane hidden" id="tab-undo"></div>
   </section>
 </main>
 
@@ -71,6 +74,10 @@
     <div class="modal-body">
       <div class="m-label" data-i18n="whatHappens"></div>
       <div id="mText" class="m-text"></div>
+      <div id="mUndo" class="undo-box hidden">
+        <label class="check"><input type="checkbox" id="mUndoChk"> <b id="mUndoLabel"></b></label>
+        <div class="small muted" id="mUndoHint"></div>
+      </div>
     </div>
     <div class="modal-foot">
       <button class="btn primary" id="mYes"></button>

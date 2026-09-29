@@ -24,7 +24,7 @@ const STR = {
     sure: "האם אתה בטוח?", whatHappens: "מה יקרה:", yesDo: "כן, בצע", cancel: "ביטול", close: "סגור", moreInfo: "מידע מפורט",
     notMeasured: "לא נמדד", error: "שגיאה",
     diskLabel: "כונן {root}", diskFree: "{free} פנויים מתוך {total} ({pct}% פנוי)",
-    admin: "פועל כמנהל", user: "פועל כמשתמש רגיל", adminTip: "חלק מהניקויים דורשים להפעיל את הכלי עם start-as-admin.bat",
+    admin: "פועל כמנהל", user: "פועל כמשתמש רגיל", adminTip: "חלק מהניקויים דורשים הרשאות מנהל",
     stage: "שלב {n} מתוך 4: {label}",
     stages: ["", "בודק זיכרון, מעבד, תוכנות הפעלה ורשת", "מודד תיקיות זבל ומטמונים מוכרים", "סורק את כל הכונן (זה השלב הארוך)", "מכין דוח"],
     filesScanned: "{n} קבצים, {size}", scanFailed: "הסריקה נכשלה: ",
@@ -53,7 +53,7 @@ const STR = {
     act: { clean: "נקה", recycle: "רוקן", command: "הפעל", open: "פתח" },
     chips: { all: "הכל", safe: "בטוח למחוק", caution: "בדוק לפני", windows: "דרך Windows", keep: "לא למחוק" },
     cleanLead: "כל מקום שהכלי מכיר במחשב, מה גודלו, מה זה, והאם בטוח למחוק. ממוין מהגדול לקטן בכל קבוצה.",
-    needAdmin: "דורש להפעיל את הכלי כמנהל (start-as-admin.bat)", empty: "ריק, אין מה לנקות", location: "מיקום ({n})",
+    needAdmin: "דורש הרשאות מנהל. לחץ \"הפעל כמנהל\" למעלה.", empty: "ריק, אין מה לנקות", location: "מיקום ({n})",
     dtWhat: "מה זה?", dtSafe: "האם בטוח למחוק?", dtHow: "איך מנקים",
     cfClean: "יימחק לצמיתות (לא דרך סל המחזור) התוכן של:\n{paths}{more}\n\nגודל: {size}\n\nמה המשמעות: {meaning}", cfMore: "\n…ועוד {n}",
     cfRecycle: "כל הפריטים בסל המחזור ({size}) יימחקו לצמיתות, ולא יהיה אפשר לשחזר אותם.\n\nאם אתה לא בטוח מה יש שם, לחץ \"ביטול\" ופתח קודם את סל המחזור.",
@@ -86,6 +86,30 @@ const STR = {
     cfQuitTitle: "לצאת מהתוכנה?", cfQuit: "התוכנה תיסגר. אפשר לפתוח אותה שוב עם start.bat.",
     closedTitle: "התוכנה נסגרה", closedText: "אפשר לסגור את החלון.",
     noTokenTitle: "חסר מפתח גישה", noTokenText: "פתח את התוכנה דרך start.bat. הכתובת הנכונה מודפסת בחלון השחור.",
+    // undo / quarantine
+    undoChk: "לשמור {days} ימים עם אפשרות ביטול",
+    undoHint: "הקבצים יועברו לתיקיית הסגר ולא יימחקו. אפשר לשחזר אותם בלשונית \"ביטול פעולות\". המקום בדיסק יתפנה רק כשהם יימחקו סופית, אוטומטית אחרי {days} ימים.",
+    undoLowDisk: "הדיסק כמעט מלא, ולכן האפשרות כבויה: כדי לפנות מקום עכשיו, הקבצים צריכים להימחק מיד.",
+    doneQuarantined: "הועבר להסגר ({size}). אפשר לשחזר עד {date} בלשונית \"ביטול פעולות\".",
+    tabUndo: "ביטול פעולות",
+    undoLead: "קבצים שניקית עם אפשרות ביטול. הם נשמרים {days} ימים ואז נמחקים אוטומטית. כרגע הם תופסים {size}.",
+    undoEmpty: "אין כרגע פעולות שאפשר לבטל. כשתנקה עם האפשרות \"לשמור {days} ימים\", הקבצים יופיעו כאן.",
+    undoItems: "{n} פריטים", undoExpires: "יימחק סופית ב-{date}", undoShow: "מה יש בפנים",
+    restore: "שחזר", purgeNow: "מחק עכשיו",
+    cfRestoreTitle: "לשחזר את הקבצים?", cfRestore: "כל הקבצים של \"{title}\" ({size}) יחזרו בדיוק למקום שממנו הם הגיעו.\n\nאם תוכנה כבר יצרה קובץ חדש באותו מקום (למשל מטמון שנבנה מחדש), הקובץ החדש נשאר, והישן נשאר בהסגר.",
+    cfPurgeTitle: "למחוק סופית?", cfPurge: "כל הקבצים של \"{title}\" ({size}) יימחקו לצמיתות, והמקום בדיסק יתפנה מיד.\n\nאחרי זה אי אפשר לשחזר אותם.",
+    doneRestored: "שוחזר ({size}).", doneRestoredSkipped: " {n} פריטים נשארו בהסגר כי המקום המקורי כבר תפוס.",
+    // share card
+    shareTitle: "שתף את התוצאה", shareSub: "כרטיס עם מה שהשגת, לשיתוף בלינקדאין ובפייסבוק. המספרים נמדדים במחשב שלך.",
+    shareNothing: "אחרי שתבצע צעד טיפול אחד לפחות, יופיע כאן כרטיס תוצאה לשיתוף.",
+    cardHeadline: "ניקיתי {size} מהמחשב", cardFree: "מקום פנוי בדיסק", cardMem: "זיכרון בשימוש", cardStartup: "תוכנות שכבר לא נפתחות לבד",
+    cardFooter: "רופא המחשב · חינמי ובקוד פתוח", saveImg: "שמור תמונה", copyText: "העתק טקסט", shareLi: "שתף בלינקדאין", shareFb: "שתף בפייסבוק",
+    copied: "הטקסט הועתק. הדבק אותו בפוסט.", imgSaved: "התמונה נשמרה בתיקיית ההורדות.",
+    shareText: "ניקיתי {size} מהמחשב עם רופא המחשב, כלי חינמי בקוד פתוח שמסביר כל פעולה לפני שהוא מבצע אותה.{free}{mem}\n{url}",
+    shareTextFree: " המקום הפנוי בדיסק עלה מ-{a} ל-{b}.", shareTextMem: " הזיכרון בשימוש ירד מ-{a}% ל-{b}%.",
+    // admin
+    runAdmin: "הפעל כמנהל", cfAdminTitle: "להפעיל מחדש כמנהל?",
+    cfAdmin: "התוכנה תיסגר ותיפתח מחדש עם הרשאות מנהל. Windows ישאל אם לאשר.\n\nעם הרשאות מנהל אפשר לנקות גם תיקיות מערכת (עדכונים ישנים, קבצים זמניים של Windows) ולבטל הפעלה אוטומטית של תוכנות שמותקנות לכל המשתמשים.\n\nתוצאות הסריקה הנוכחית לא יישמרו, ותצטרך לסרוק שוב.",
   },
   en: {
     appName: "PC Doctor", appSub: "Diagnose, clean up, and understand every action", langBtn: "עברית", quit: "Exit",
@@ -98,7 +122,7 @@ const STR = {
     sure: "Are you sure?", whatHappens: "What will happen:", yesDo: "Yes, do it", cancel: "Cancel", close: "Close", moreInfo: "More details",
     notMeasured: "Not measured", error: "Error",
     diskLabel: "Drive {root}", diskFree: "{free} free of {total} ({pct}% free)",
-    admin: "Running as administrator", user: "Running as a regular user", adminTip: "Some cleanups require starting the tool with start-as-admin.bat",
+    admin: "Running as administrator", user: "Running as a regular user", adminTip: "Some cleanups require administrator rights",
     stage: "Step {n} of 4: {label}",
     stages: ["", "Checking memory, CPU, startup programs and network", "Measuring known junk and cache folders", "Scanning the whole drive (the long part)", "Preparing the report"],
     filesScanned: "{n} files, {size}", scanFailed: "The scan failed: ",
@@ -127,7 +151,7 @@ const STR = {
     act: { clean: "Clean", recycle: "Empty", command: "Run", open: "Open" },
     chips: { all: "All", safe: "Safe to delete", caution: "Check first", windows: "Via Windows", keep: "Do not delete" },
     cleanLead: "Every location the tool knows on this PC: its size, what it is, and whether it is safe to delete. Sorted from largest to smallest in each group.",
-    needAdmin: "Requires running the tool as administrator (start-as-admin.bat)", empty: "Empty, nothing to clean", location: "Location ({n})",
+    needAdmin: "Requires administrator rights. Click \"Run as administrator\" at the top.", empty: "Empty, nothing to clean", location: "Location ({n})",
     dtWhat: "What is it?", dtSafe: "Is it safe to delete?", dtHow: "How to clean",
     cfClean: "The contents of the following will be deleted permanently (not via the Recycle Bin):\n{paths}{more}\n\nSize: {size}\n\nWhat it means: {meaning}", cfMore: "\n…and {n} more",
     cfRecycle: "All items in the Recycle Bin ({size}) will be deleted permanently and cannot be restored.\n\nIf you are not sure what is in there, click \"Cancel\" and open the Recycle Bin first.",
@@ -160,6 +184,30 @@ const STR = {
     cfQuitTitle: "Exit the program?", cfQuit: "The program will close. You can open it again with start.bat.",
     closedTitle: "The program has closed", closedText: "You can close this window.",
     noTokenTitle: "Missing access key", noTokenText: "Open the program through start.bat. The correct address is printed in the console window.",
+    // undo / quarantine
+    undoChk: "Keep for {days} days so I can undo",
+    undoHint: "The files are moved to a quarantine folder instead of being deleted. You can restore them in the \"Undo\" tab. The disk space is freed only when they are deleted for good, automatically after {days} days.",
+    undoLowDisk: "Your disk is almost full, so this is off: to free space now, the files need to be deleted right away.",
+    doneQuarantined: "Moved to quarantine ({size}). You can restore it until {date} in the \"Undo\" tab.",
+    tabUndo: "Undo",
+    undoLead: "Files you cleaned with undo enabled. They are kept for {days} days and then deleted automatically. They currently use {size}.",
+    undoEmpty: "Nothing to undo right now. When you clean with \"Keep for {days} days\" checked, the files appear here.",
+    undoItems: "{n} items", undoExpires: "Deleted for good on {date}", undoShow: "What is inside",
+    restore: "Restore", purgeNow: "Delete now",
+    cfRestoreTitle: "Restore these files?", cfRestore: "All files of \"{title}\" ({size}) go back exactly where they came from.\n\nIf a program already created a new file in the same place (for example a rebuilt cache), the new file stays and the old one remains in quarantine.",
+    cfPurgeTitle: "Delete for good?", cfPurge: "All files of \"{title}\" ({size}) will be deleted permanently, and the disk space is freed right away.\n\nAfter this they cannot be restored.",
+    doneRestored: "Restored ({size}).", doneRestoredSkipped: " {n} items stayed in quarantine because their original place is taken.",
+    // share card
+    shareTitle: "Share your result", shareSub: "A card with what you achieved, for LinkedIn and Facebook. The numbers are measured on your PC.",
+    shareNothing: "After you complete at least one fix, a result card to share appears here.",
+    cardHeadline: "I cleaned up {size} on my PC", cardFree: "Free disk space", cardMem: "Memory in use", cardStartup: "Programs no longer starting on their own",
+    cardFooter: "PC Doctor · free and open source", saveImg: "Save image", copyText: "Copy text", shareLi: "Share on LinkedIn", shareFb: "Share on Facebook",
+    copied: "Text copied. Paste it into your post.", imgSaved: "The image was saved to your Downloads folder.",
+    shareText: "I cleaned up {size} on my PC with PC Doctor, a free open-source tool that explains every action before it runs.{free}{mem}\n{url}",
+    shareTextFree: " Free disk space went from {a} to {b}.", shareTextMem: " Memory in use dropped from {a}% to {b}%.",
+    // admin
+    runAdmin: "Run as administrator", cfAdminTitle: "Restart as administrator?",
+    cfAdmin: "The program will close and reopen with administrator rights. Windows will ask you to approve.\n\nWith administrator rights you can also clean system folders (old updates, Windows temp files) and stop programs installed for all users from starting automatically.\n\nThe current scan results are not kept, so you will need to scan again.",
   },
 };
 
@@ -237,11 +285,26 @@ const SAFETY_TEXT = {
 const sbadge = (s) => `<span class="badge ${SAFETY_CLS[s]}">${esc(SAFETY_TEXT[LANG][s])}</span>`;
 
 // ========================================================= confirm modal
-/** Every action goes through here: explain what will happen, run only after "Yes". */
-function confirmAction(title, text, yesLabel, danger = false) {
+/**
+ * Every action goes through here: explain what will happen, run only after "Yes".
+ * With opts.undoable, the dialog offers "keep for 7 days so I can undo" and the
+ * promise resolves to {undo: true|false} instead of true.
+ */
+function confirmAction(title, text, yesLabel, danger = false, opts = {}) {
   return new Promise((resolve) => {
     $("#mTitle").textContent = title;
     $("#mText").textContent = text;
+    const box = $("#mUndo");
+    if (opts.undoable) {
+      const days = (STATE && STATE.quarantine && STATE.quarantine.days) || 7;
+      const low = STATE && STATE.disk && STATE.disk.free / STATE.disk.total < 0.10;
+      $("#mUndoChk").checked = !low;
+      $("#mUndoLabel").textContent = L("undoChk", { days });
+      $("#mUndoHint").textContent = L("undoHint", { days }) + (low ? " " + L("undoLowDisk") : "");
+      box.classList.remove("hidden");
+    } else {
+      box.classList.add("hidden");
+    }
     const yes = $("#mYes"), no = $("#mNo"), modal = $("#modal");
     yes.textContent = yesLabel || L("yesDo");
     yes.className = "btn " + (danger ? "danger" : "primary");
@@ -252,7 +315,7 @@ function confirmAction(title, text, yesLabel, danger = false) {
       yes.onclick = no.onclick = modal.onclick = document.onkeydown = null;
       resolve(v);
     };
-    yes.onclick = () => done(true);
+    yes.onclick = () => done(opts.undoable ? { undo: $("#mUndoChk").checked } : true);
     no.onclick = () => done(false);
     modal.onclick = (e) => { if (e.target === modal) done(false); };
     document.onkeydown = (e) => { if (e.key === "Escape") done(false); };
@@ -275,6 +338,9 @@ function renderAdmin(isAdmin) {
   b.className = "badge " + (isAdmin ? "b-safe" : "b-neutral");
   b.textContent = isAdmin ? L("admin") : L("user");
   b.title = isAdmin ? "" : L("adminTip");
+  $("#adminBtn").classList.toggle("hidden", !!isAdmin);
+  $("#adminBtn").textContent = L("runAdmin");
+  if (STATE && STATE.version) $("#ver").textContent = "v" + STATE.version;
 }
 
 // =============================================================== polling
@@ -336,6 +402,7 @@ function renderAll() {
   renderClean();
   renderDiskTab();
   renderSystem();
+  renderUndo();
 }
 
 // ================================================================ report
@@ -356,8 +423,10 @@ function renderReport() {
       <div class="stat"><div class="k">${esc(L("statMem"))}</div><div class="v num">${mem.load}%</div></div>
       <div class="stat"><div class="k">${esc(L("statCpu"))}</div><div class="v num">${R.diag.processes.total_cpu}%</div></div>
     </div>
+    ${shareSection()}
     <p class="lead">${esc(lead)}</p>
     ${f.map(renderFinding).join("")}`;
+  bindShare();
 
   $("#tab-report").querySelectorAll("[data-step]").forEach((b) => b.addEventListener("click", () => doStep(b.dataset.step)));
   $("#tab-report").querySelectorAll("[data-info]").forEach((b) => b.addEventListener("click", () => showStepInfo(b.dataset.info)));
@@ -398,7 +467,13 @@ function renderFinding(f) {
   </article>`;
 }
 
+function fmtDate(ts) {
+  return new Date(ts * 1000).toLocaleDateString(LANG === "he" ? "he-IL" : "en-US", { day: "numeric", month: "long", year: "numeric" });
+}
+
 function resultText(r) {
+  if (r.quarantined != null) return L("doneQuarantined", { size: fmt(r.quarantined), date: r.expires ? fmtDate(r.expires) : "" }) +
+    (r.skipped ? L("doneSkipped", { n: num(r.skipped) }) : "");
   if (r.freed != null) return L("doneFreed", { size: fmt(r.freed) }) + (r.skipped ? L("doneSkipped", { n: num(r.skipped) }) : "");
   if (r.recycled != null) return L("doneRecycled", { size: fmt(r.recycled) });
   return r.message || L("done");
@@ -413,15 +488,18 @@ async function doStep(id) {
   const s = findStep(id);
   if (!s) return;
   if (s.action.type === "goto") return openTab(s.action.tab, s.action.anchor);
-  const ok = await confirmAction(L("sure") + " " + s.title, s.confirm, L("yesDo"), s.action.type === "restart");
+  const undoable = s.action.type === "clean_rules";
+  const ok = await confirmAction(L("sure") + " " + s.title, s.confirm, L("yesDo"), s.action.type === "restart", { undoable });
   if (!ok) return;
-  toast(L("working"), 60000);
+  toast(L("working"), 600000);
   try {
-    const r = await api("/api/fix", { step: id });
+    const r = await api("/api/fix", { step: id, undo: !!(ok && ok.undo) });
     STATE.done_steps[id] = r.result;
     if (r.disk) { STATE.disk = r.disk; renderDisk(r.disk); }
     toast(resultText(r.result), 6000);
+    await refreshStats();
     renderReport();
+    if (r.result.quarantined != null) renderUndo();
   } catch (e) {
     toast(L("failed") + e.message, 8000);
   }
@@ -587,15 +665,18 @@ async function doRule(id) {
   } else {
     text = L("cfOpen", { how: t.how });
   }
-  const ok = await confirmAction(L("sure") + " " + t.title, text);
+  const ok = await confirmAction(L("sure") + " " + t.title, text, L("yesDo"), false, { undoable: r.action === "clean" });
   if (!ok) return;
-  toast(L("working"), 60000);
+  toast(L("working"), 600000);
   try {
-    const res = await api("/api/rule", { rule: id });
+    const res = await api("/api/rule", { rule: id, undo: !!(ok && ok.undo) });
     if (res.disk) { STATE.disk = res.disk; renderDisk(res.disk); }
     if (res.result.freed != null && r.action !== "command") r.size = Math.max(0, (r.size || 0) - res.result.freed);
     toast(resultText(res.result), 6000);
+    await refreshStats();
     renderClean();
+    renderReport();
+    if (res.result.quarantined != null) renderUndo();
   } catch (e) {
     toast(L("failed") + e.message, 8000);
   }
@@ -641,14 +722,17 @@ function bindFileButtons(root) {
   }));
   root.querySelectorAll("[data-nm]").forEach((b) => b.addEventListener("click", async () => {
     const p = b.dataset.nm;
-    const ok = await confirmAction(L("cfNmTitle"), L("cfNm", { path: p, size: fmt(+b.dataset.size) }), L("cfNmYes"), true);
+    const ok = await confirmAction(L("cfNmTitle"), L("cfNm", { path: p, size: fmt(+b.dataset.size) }), L("cfNmYes"), true, { undoable: true });
     if (!ok) return;
-    toast(L("deleting"), 60000);
+    toast(L("deleting"), 600000);
     try {
-      const r = await api("/api/delete_nm", { path: p });
+      const r = await api("/api/delete_nm", { path: p, undo: !!ok.undo });
       b.closest("tr").remove();
       if (r.disk) renderDisk(r.disk);
       toast(resultText(r.result), 6000);
+      await refreshStats();
+      renderReport();
+      if (r.result.quarantined != null) renderUndo();
     } catch (e) { toast(L("failed") + e.message, 8000); }
   }));
 }
@@ -736,7 +820,211 @@ function renderSystem() {
   </tbody></table>`;
 }
 
+// ================================================================== undo
+async function renderUndo() {
+  const el = $("#tab-undo");
+  let batches = [];
+  try { batches = await api("/api/quarantine"); } catch (e) { /* ignore */ }
+  const days = (STATE.quarantine && STATE.quarantine.days) || 7;
+  const total = batches.reduce((a, b) => a + b.size, 0);
+  $("#undoCount").textContent = batches.length ? `(${batches.length})` : "";
+  if (!batches.length) {
+    el.innerHTML = `<div class="empty">${esc(L("undoEmpty", { days }))}</div>`;
+    return;
+  }
+  el.innerHTML = `<p class="lead">${esc(L("undoLead", { days, size: fmt(total) }))}</p>` + batches.map((b) => `
+    <div class="card">
+      <div class="card-head"><h3>${esc(pick(b.title))}</h3><span class="size">${fmt(b.size)}</span></div>
+      <div class="small muted" style="margin-top:4px">${esc(fmtDate(b.created))} · ${esc(L("undoItems", { n: num(b.count) }))} · ${esc(L("undoExpires", { date: fmtDate(b.expires) }))}</div>
+      <details class="paths"><summary>${esc(L("undoShow"))}</summary><ul>${b.sample.map((p) => `<li class="mono">${esc(p)}</li>`).join("")}${b.count > b.sample.length ? "<li>…</li>" : ""}</ul></details>
+      <div class="card-actions">
+        <button class="btn primary small" data-restore="${esc(b.id)}">${esc(L("restore"))}</button>
+        <button class="btn small" data-purge="${esc(b.id)}">${esc(L("purgeNow"))}</button>
+      </div>
+    </div>`).join("");
+  const find = (id) => batches.find((b) => b.id === id);
+  el.querySelectorAll("[data-restore]").forEach((btn) => btn.addEventListener("click", async () => {
+    const b = find(btn.dataset.restore);
+    if (!await confirmAction(L("cfRestoreTitle"), L("cfRestore", { title: pick(b.title), size: fmt(b.size) }), L("restore"))) return;
+    try {
+      const r = await api("/api/quarantine/restore", { id: b.id });
+      toast(L("doneRestored", { size: fmt(r.result.restored) }) + (r.result.skipped ? L("doneRestoredSkipped", { n: num(r.result.skipped) }) : ""), 7000);
+      if (r.disk) renderDisk(r.disk);
+      await refreshStats();
+      renderUndo();
+      renderReport();
+    } catch (e) { toast(L("failed") + e.message, 8000); }
+  }));
+  el.querySelectorAll("[data-purge]").forEach((btn) => btn.addEventListener("click", async () => {
+    const b = find(btn.dataset.purge);
+    if (!await confirmAction(L("cfPurgeTitle"), L("cfPurge", { title: pick(b.title), size: fmt(b.size) }), L("purgeNow"), true)) return;
+    toast(L("deleting"), 600000);
+    try {
+      const r = await api("/api/quarantine/purge", { id: b.id });
+      toast(L("doneFreed", { size: fmt(r.result.freed) }), 6000);
+      if (r.disk) renderDisk(r.disk);
+      renderUndo();
+    } catch (e) { toast(L("failed") + e.message, 8000); }
+  }));
+}
+
+// ============================================================ share card
+const REPO_URL = "https://github.com/ozlevi29/Analyzing-files-on-the-computer";
+
+async function refreshStats() {
+  try {
+    const s = await api("/api/state");
+    STATE.stats = s.stats;
+    STATE.disk = s.disk;
+    STATE.quarantine = s.quarantine;
+  } catch (e) { /* ignore */ }
+}
+
+function cardData() {
+  const st = STATE.stats || {};
+  const base = st.baseline;
+  if (!base || !st.actions) return null;
+  const cleaned = (st.freed || 0) + (st.quarantined || 0);
+  return {
+    cleaned,
+    freeBefore: base.free, freeNow: STATE.disk.free,
+    memBefore: base.mem, memNow: st.mem_now,
+    startup: st.startup_disabled || 0,
+  };
+}
+
+const plain = (s) => s.replace(/[⁦⁩]/g, "");
+
+function shareSection() {
+  const d = cardData();
+  if (!d) return "";
+  return `<section class="share">
+    <div class="share-head">
+      <div><h2 class="section-title" style="margin:0">${esc(L("shareTitle"))}</h2>
+      <p class="section-sub" style="margin:4px 0 0">${esc(L("shareSub"))}</p></div>
+    </div>
+    <canvas id="card" width="1200" height="630" aria-label="${esc(L("shareTitle"))}"></canvas>
+    <div class="card-actions">
+      <button class="btn primary small" id="saveCard">${esc(L("saveImg"))}</button>
+      <button class="btn small" id="copyCard">${esc(L("copyText"))}</button>
+      <button class="btn small" data-share="linkedin">${esc(L("shareLi"))}</button>
+      <button class="btn small" data-share="facebook">${esc(L("shareFb"))}</button>
+    </div>
+  </section>`;
+}
+
+function drawCard(canvas, d) {
+  const c = canvas.getContext("2d");
+  const W = 1200, H = 630, rtl = LANG === "he";
+  const font = (w, px) => `${w} ${px}px "Segoe UI", Arial, sans-serif`;
+  /** Shrink the font until the text fits `maxW`. */
+  const fit = (text, weight, px, maxW) => {
+    c.font = font(weight, px);
+    while (px > 14 && c.measureText(text).width > maxW) { px -= 2; c.font = font(weight, px); }
+  };
+  // background
+  const g = c.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, "#0f2a5c");
+  g.addColorStop(1, "#1d4ed8");
+  c.fillStyle = g;
+  c.fillRect(0, 0, W, H);
+  c.fillStyle = "rgba(255,255,255,0.06)";
+  c.beginPath(); c.arc(rtl ? 120 : W - 120, 90, 260, 0, Math.PI * 2); c.fill();
+
+  c.direction = rtl ? "rtl" : "ltr";
+  c.textAlign = rtl ? "right" : "left";
+  const x = rtl ? W - 70 : 70;
+  // logo + name
+  const lx = rtl ? W - 70 - 56 : 70;
+  c.fillStyle = "#ffffff";
+  roundRect(c, lx, 56, 56, 56, 14); c.fill();
+  c.strokeStyle = "#1d4ed8"; c.lineWidth = 5; c.lineJoin = "round";
+  c.beginPath();
+  [[lx + 10, 86], [lx + 20, 86], [lx + 26, 70], [lx + 33, 100], [lx + 39, 80], [lx + 46, 86]].forEach(([px, py], i) => i ? c.lineTo(px, py) : c.moveTo(px, py));
+  c.stroke();
+  c.fillStyle = "#ffffff";
+  c.font = font(700, 34);
+  c.fillText(L("appName"), rtl ? lx - 20 : lx + 76, 96);
+
+  // headline (fmt keeps direction isolates, so Hebrew shows "156.5 GB" in the right order)
+  const headline = L("cardHeadline", { size: fmt(d.cleaned) });
+  fit(headline, 800, 76, W - 140);
+  c.fillText(headline, x, 250);
+
+  // only numbers that actually improved
+  const stats = [];
+  if (d.freeNow > d.freeBefore) stats.push([L("cardFree"), `${plain(fmt(d.freeBefore))}  →  ${plain(fmt(d.freeNow))}`]);
+  if (d.memNow < d.memBefore) stats.push([L("cardMem"), `${d.memBefore}%  →  ${d.memNow}%`]);
+  if (d.startup) stats.push([L("cardStartup"), String(d.startup)]);
+  if (stats.length) {
+    const gap = 40;
+    const colW = (W - 140 - gap * (stats.length - 1)) / stats.length;
+    stats.forEach(([k, v], i) => {
+      const cx = rtl ? W - 70 - i * (colW + gap) : 70 + i * (colW + gap);
+      c.fillStyle = "rgba(255,255,255,0.72)";
+      fit(k, 600, 26, colW);
+      c.fillText(k, cx, 360);
+      c.fillStyle = "#ffffff";
+      c.save(); c.direction = "ltr";
+      c.textAlign = rtl ? "right" : "left";
+      fit(v, 700, 44, colW);
+      c.fillText(v, cx, 418);
+      c.restore();
+    });
+  }
+
+  // footer
+  c.fillStyle = "rgba(255,255,255,0.15)";
+  c.fillRect(0, H - 90, W, 90);
+  c.fillStyle = "#ffffff";
+  c.font = font(600, 26);
+  c.fillText(L("cardFooter"), x, H - 36);
+  c.save(); c.direction = "ltr"; c.textAlign = rtl ? "left" : "right";
+  c.font = font(400, 22);
+  c.fillText(REPO_URL.replace("https://", ""), rtl ? 70 : W - 70, H - 38);
+  c.restore();
+}
+
+function roundRect(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+}
+
+function shareText(d) {
+  const free = d.freeNow > d.freeBefore ? L("shareTextFree", { a: plain(fmt(d.freeBefore)), b: plain(fmt(d.freeNow)) }) : "";
+  const mem = d.memNow < d.memBefore ? L("shareTextMem", { a: d.memBefore, b: d.memNow }) : "";
+  return L("shareText", { size: plain(fmt(d.cleaned)), free, mem, url: REPO_URL });
+}
+
+function bindShare() {
+  const canvas = $("#card");
+  if (!canvas) return;
+  const d = cardData();
+  drawCard(canvas, d);
+  $("#saveCard").onclick = () => {
+    const a = document.createElement("a");
+    a.href = canvas.toDataURL("image/png");
+    a.download = "pc-doctor-result.png";
+    a.click();
+    toast(L("imgSaved"));
+  };
+  $("#copyCard").onclick = async () => {
+    try { await navigator.clipboard.writeText(shareText(d)); toast(L("copied")); }
+    catch (e) { toast(L("failed") + e.message); }
+  };
+  document.querySelectorAll("[data-share]").forEach((b) => (b.onclick = () => {
+    navigator.clipboard.writeText(shareText(d)).catch(() => {});
+    api("/api/open_share", { site: b.dataset.share }).then(() => toast(L("copied"), 6000)).catch((e) => toast(e.message));
+  }));
+}
+
 // =============================================================== buttons
+$("#adminBtn").addEventListener("click", async () => {
+  if (!await confirmAction(L("cfAdminTitle"), L("cfAdmin"), L("runAdmin"))) return;
+  try { await api("/api/relaunch_admin", {}); } catch (e) { toast(e.message, 6000); }
+});
+
 async function startScan(deep) {
   const ok = await confirmAction(L("cfScanTitle"), L("cfScan", { deep: deep ? L("cfScanDeep") : "" }), L("startScan"));
   if (!ok) return;

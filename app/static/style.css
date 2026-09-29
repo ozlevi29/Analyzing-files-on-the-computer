@@ -261,3 +261,11 @@ details.rule-sec > summary .sz { margin-inline-start: auto; font-variant-numeric
 :root[dir="ltr"] .mono { text-align: left; }
 :root[dir="ltr"] details.rule-sec > summary::before { content: "▶"; }
 :root[dir="ltr"] details.rule-sec[open] > summary::before { transform: rotate(90deg); }
+
+/* version, undo option, share card */
+.ver { font-size: 12px; font-weight: 500; color: var(--muted); }
+.undo-box { margin-top: 12px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--windows-bg); }
+.undo-box .check { margin: 0 0 4px; }
+.share { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 20px; box-shadow: var(--shadow); }
+.share-head { margin-bottom: 12px; }
+#card { width: 100%; max-width: 600px; height: auto; border-radius: 10px; display: block; }

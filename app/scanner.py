@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import stat
+import sys
 import time
 from ctypes import wintypes
 
@@ -21,6 +22,26 @@ def is_admin():
         return bool(ctypes.windll.shell32.IsUserAnAdmin())
     except Exception:
         return False
+
+
+def _protected_paths():
+    """תיקיות שהכלי לעולם לא נוגע בהן: הקבצים של עצמו כשהוא רץ כ-exe, ההסגר והפרופיל שלו."""
+    out = [os.path.join(os.environ.get("LOCALAPPDATA", ""), "PCDoctor")]
+    if getattr(sys, "_MEIPASS", None):
+        out.append(sys._MEIPASS)
+    out.append(os.path.dirname(os.path.abspath(sys.executable if getattr(sys, "frozen", False) else __file__)))
+    return [os.path.normcase(os.path.abspath(p)) for p in out if p]
+
+
+PROTECTED = _protected_paths()
+
+
+def excluded(path):
+    p = os.path.normcase(os.path.abspath(path))
+    for q in PROTECTED:
+        if p == q or p.startswith(q + os.sep):
+            return True
+    return os.path.basename(p) == ".pcdoctor-quarantine"
 
 
 def _is_link(entry):
@@ -141,22 +162,27 @@ def clean_contents(path, min_age_days=0):
     freed = skipped = 0
     if not os.path.lexists(path):
         return 0, 0
+    if excluded(path):
+        return 0, 0
     if not os.path.isdir(path) or os.path.islink(path):
         return _remove_file(path, min_mtime)
-    # מעבר מהעמוק לרדוד כדי שתיקיות ריקות יימחקו אחרי הקבצים שלהן
-    for root, dirs, files in os.walk(path, topdown=False, onerror=lambda e: None):
+    subdirs = []
+    for root, dirs, files in os.walk(path, onerror=lambda e: None):
+        # לא נכנסים ל-junctions, לקיצורי דרך ולתיקיות של הכלי עצמו
+        dirs[:] = [d for d in dirs if not (os.path.islink(os.path.join(root, d))
+                                          or (hasattr(os.path, "isjunction") and os.path.isjunction(os.path.join(root, d)))
+                                          or excluded(os.path.join(root, d)))]
+        subdirs.extend(os.path.join(root, d) for d in dirs)
         for f in files:
             fr, sk = _remove_file(os.path.join(root, f), min_mtime)
             freed += fr
             skipped += sk
-        for d in dirs:
-            dp = os.path.join(root, d)
-            try:
-                if os.path.islink(dp) or (hasattr(os.path, "isjunction") and os.path.isjunction(dp)):
-                    continue
-                os.rmdir(dp)
-            except OSError:
-                pass
+    # מהעמוק לרדוד, כדי שתיקיות שהתרוקנו יימחקו
+    for d in reversed(subdirs):
+        try:
+            os.rmdir(d)
+        except OSError:
+            pass
     return freed, skipped
 
 
@@ -192,15 +218,80 @@ def rule_paths(r):
     return found
 
 
-def clean_rule(r):
-    """מנקה את כל הנתיבים של כלל. מחזיר (בייטים שפונו, פריטים שדולגו)."""
+def quarantine_contents(path, min_age_days, batch):
+    """
+    כמו clean_contents, אבל מעביר להסגר במקום למחוק.
+    תיקייה שאין בה קבצים נעולים עוברת בשלמותה (מהיר). אחרת נכנסים פנימה ומעבירים קובץ-קובץ.
+    מחזיר (בייטים שהועברו, פריטים שדולגו).
+    """
+    min_mtime = time.time() - min_age_days * 86400 if min_age_days else 0
+    moved = skipped = 0
+    if not os.path.lexists(path):
+        return 0, 0
+    if excluded(path):
+        return 0, 0
+    if not os.path.isdir(path) or os.path.islink(path):
+        try:
+            if min_mtime and os.lstat(path).st_mtime > min_mtime:
+                return 0, 1
+        except OSError:
+            return 0, 1
+        m = batch.move(path)
+        return m, (0 if m or not os.path.lexists(path) else 1)
+    stack = [path]
+    while stack:
+        cur = stack.pop()
+        try:
+            entries = list(os.scandir(cur))
+        except OSError:
+            continue
+        for e in entries:
+            try:
+                if _is_link(e) or excluded(e.path):
+                    continue
+                is_dir = e.is_dir(follow_symlinks=False)
+                if not is_dir:
+                    st = e.stat(follow_symlinks=False)
+                    if min_mtime and st.st_mtime > min_mtime:
+                        skipped += 1
+                        continue
+                    m = batch.move(e.path, st.st_size)
+                    if m or st.st_size == 0:
+                        moved += m
+                    else:
+                        skipped += 1
+                elif min_mtime:
+                    stack.append(e.path)  # צריך לבדוק גיל של כל קובץ
+                else:
+                    m = batch.move(e.path)
+                    if m == 0 and os.path.lexists(e.path):
+                        stack.append(e.path)  # יש בפנים משהו נעול: עוברים קובץ-קובץ
+                    moved += m
+            except OSError:
+                skipped += 1
+    return moved, skipped
+
+
+def clean_rule(r, batch=None):
+    """
+    מנקה את כל הנתיבים של כלל. אם batch ניתן, מעביר להסגר (אפשר לבטל) במקום למחוק.
+    מחזיר (בייטים שפונו או הועברו, פריטים שדולגו).
+    """
     if r["id"] == "recycle_bin":
         return empty_recycle_bin(), 0
     if r.get("action") != "clean":
         raise ValueError("rule is not cleanable")
     freed = skipped = 0
     for p in rule_paths(r):
-        f, s = clean_contents(p, r.get("min_age_days", 0))
+        if batch is not None:
+            if r.get("remove_root") and not r.get("min_age_days"):
+                m = batch.move(p)  # כל התיקייה בבת אחת
+                if m or not os.path.lexists(p):
+                    freed += m
+                    continue
+            f, s = quarantine_contents(p, r.get("min_age_days", 0), batch)
+        else:
+            f, s = clean_contents(p, r.get("min_age_days", 0))
         freed += f
         skipped += s
         if r.get("remove_root") and os.path.isdir(p):

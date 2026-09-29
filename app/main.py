@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-רופא המחשב - שרת מקומי שמציג ממשק בדפדפן.
+PC Doctor - a local server that shows its interface in an Edge app window.
 
-השרת מאזין רק ל-127.0.0.1 (המחשב הזה בלבד) ודורש מפתח אקראי שנוצר בכל הפעלה,
-כדי שאתרים אחרים שפתוחים בדפדפן לא יוכלו לשלוח לו פקודות.
-פעולות מחיקה מתקבלות רק על נתיבים וצעדים שהסריקה עצמה הציעה.
+The server listens only on 127.0.0.1 (this computer) and requires a random key
+created on every start, so other websites open in a browser cannot send it commands.
+Delete actions are accepted only for paths and steps that the scan itself produced.
 """
 
+import ctypes
 import json
 import mimetypes
 import os
@@ -21,16 +22,32 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+FROZEN = getattr(sys, "frozen", False)  # running as PCDoctor.exe (PyInstaller)
+HERE = sys._MEIPASS if FROZEN else os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+
+# In the windowed exe there is no console: send output and errors to a log file.
+DATA_DIR = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "PCDoctor")
+os.makedirs(DATA_DIR, exist_ok=True)
+if FROZEN or sys.stdout is None or sys.stderr is None:
+    _log = open(os.path.join(DATA_DIR, "log.txt"), "a", encoding="utf-8", buffering=1)
+    sys.stdout = sys.stderr = _log
 
 import diagnostics  # noqa: E402
+import quarantine  # noqa: E402
 import report  # noqa: E402
 import rules  # noqa: E402
 import scanner  # noqa: E402
+from version import __version__  # noqa: E402
 
-STATIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+STATIC = os.path.join(HERE, "static")
 TOKEN = secrets.token_urlsafe(24)
 SYSDRIVE = os.environ.get("SystemDrive", "C:") + "\\"
+REPO_URL = "https://github.com/ozlevi29/Analyzing-files-on-the-computer"
+SHARE_URLS = {
+    "linkedin": "https://www.linkedin.com/sharing/share-offsite/?url=" + REPO_URL,
+    "facebook": "https://www.facebook.com/sharer/sharer.php?u=" + REPO_URL,
+}
 
 MSG = {
     "cmd_opened": ("נפתח חלון פקודה. אם Windows מבקש אישור מנהל, לחץ \"כן\". עקוב אחרי החלון עד שהוא מסיים.",
@@ -49,6 +66,7 @@ MSG = {
     "not_scanned": ("הנתיב לא הופיע בתוצאות הסריקה", "This path was not in the scan results"),
     "recycle_failed": ("לא הצלחתי להעביר לסל המחזור. ייתכן שהקובץ פתוח בתוכנה אחרת.",
                        "Could not move to the Recycle Bin. The file may be open in another program."),
+    "admin_cancelled": ("ההפעלה כמנהל בוטלה.", "Running as administrator was cancelled."),
 }
 
 
@@ -63,6 +81,13 @@ class State:
     results = None
     disk_scan = None
     done_steps = {}
+    # for the share card: numbers before the first fix, and what was done since
+    stats = dict(baseline=None, freed=0, quarantined=0, startup_disabled=0, actions=0)
+    edge_proc = None
+
+
+def _mem_load():
+    return diagnostics.memory()["load"]
 
 
 # ------------------------------------------------------------------ the scan
@@ -99,6 +124,9 @@ def run_scan(deep):
             State.results = dict(diag=diag, rules=rule_items, downloads=downloads, disk=disk,
                                  findings=findings, finished=time.time(), deep=deep)
             State.done_steps = {}
+            if State.stats["baseline"] is None:  # the "before" numbers for the share card
+                State.stats["baseline"] = dict(free=disk_now()["free"], mem=diag["memory"]["load"], time=time.time(),
+                                               startup=sum(1 for s in diag["startup"] if s["enabled"]))
         st.update(status="done", pct=100)
     except Exception as e:  # noqa: BLE001
         traceback.print_exc()
@@ -117,7 +145,7 @@ def _chrome_path():
 
 def run_command(cmd, admin):
     if admin:
-        # פותח חלון cmd עם בקשת הרשאות מנהל (UAC). הפקודה קבועה מתוך הקוד, לא מהמשתמש.
+        # Opens a cmd window with an administrator (UAC) prompt. The command is fixed in the code, never user input.
         subprocess.Popen(["powershell", "-NoProfile", "-Command",
                           f"Start-Process cmd -ArgumentList '/k {cmd}' -Verb RunAs"],
                          creationflags=diagnostics.NO_WINDOW)
@@ -125,25 +153,35 @@ def run_command(cmd, admin):
         subprocess.Popen(["cmd", "/k", cmd], creationflags=subprocess.CREATE_NEW_CONSOLE)
 
 
-def execute(action, lang="he"):
+def execute(action, lang="he", undo=False, title=None):
+    """
+    Runs one action. With undo=True, cleaning moves files into the quarantine
+    (restorable for 7 days) instead of deleting them.
+    """
     t = action["type"]
     if t == "clean_rules":
-        freed = skipped = 0
-        details = []
+        batch = quarantine.Batch(title or {"he": "ניקוי", "en": "Cleanup"}) if undo else None
+        done = skipped = 0
         for rid in action["rules"]:
-            r = rules.rule_by_id(rid)
-            f, s = scanner.clean_rule(r)
-            freed += f
+            f, s = scanner.clean_rule(rules.rule_by_id(rid), batch)
+            done += f
             skipped += s
-            details.append(dict(title=r["title"], freed=f, skipped=s))
-        return dict(freed=freed, skipped=skipped, details=details)
+        if batch is not None:
+            info = batch.save() or {}
+            State.stats["quarantined"] += done
+            return dict(quarantined=done, skipped=skipped, batch=info.get("id"), expires=info.get("expires"))
+        State.stats["freed"] += done
+        return dict(freed=done, skipped=skipped)
     if t == "empty_recycle":
-        return dict(freed=scanner.empty_recycle_bin())
+        freed = scanner.empty_recycle_bin()
+        State.stats["freed"] += freed
+        return dict(freed=freed)
     if t == "command":
         run_command(action["command"], action.get("admin", True))
         return dict(message=msg("cmd_opened", lang))
     if t == "disable_startup":
         diagnostics.set_startup_enabled(action["hive"], action["sub"], action["name"], False)
+        State.stats["startup_disabled"] += 1
         return dict(message=msg("startup_off", lang))
     if t == "open":
         os.startfile(action["target"])
@@ -180,6 +218,34 @@ def _known_paths(kind):
 def disk_now():
     u = shutil.disk_usage(SYSDRIVE)
     return dict(root=SYSDRIVE, total=u.total, used=u.used, free=u.free)
+
+
+def _step_title(sid):
+    out = {}
+    for lang in ("he", "en"):
+        fs = ((State.results or {}).get("findings") or {}).get(lang, [])
+        s = next((s for s in report.all_steps(fs) if s["id"] == sid), None)
+        out[lang] = s["title"] if s else sid
+    return out
+
+
+def relaunch_as_admin():
+    """Start a new elevated copy of the program, then close this one (and its window)."""
+    if FROZEN:
+        exe, params = sys.executable, ""
+    else:
+        exe, params = sys.executable, f'"{os.path.abspath(__file__)}"'
+    rc = ctypes.windll.shell32.ShellExecuteW(None, "runas", exe, params, None, 1)
+    if rc <= 32:  # the user clicked "No" on the UAC prompt
+        return False
+
+    def bye():
+        time.sleep(0.5)
+        if State.edge_proc and State.edge_proc.poll() is None:
+            State.edge_proc.terminate()
+        os._exit(0)
+    threading.Thread(target=bye, daemon=True).start()
+    return True
 
 
 # ------------------------------------------------------------------- http
@@ -219,10 +285,12 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(403, {"error": "forbidden"})
         if url.path == "/api/state":
             res = State.results
-            if res and res.get("disk"):  # העץ נשלח בנפרד דרך /api/tree
+            if res and res.get("disk"):  # the tree is sent separately via /api/tree
                 res = dict(res, disk={k: v for k, v in res["disk"].items() if k != "tree"})
             return self._send(200, dict(scan=State.scan, results=res, done_steps=State.done_steps,
-                                        disk=disk_now(), admin=scanner.is_admin()))
+                                        disk=disk_now(), admin=scanner.is_admin(), version=__version__,
+                                        stats=dict(State.stats, mem_now=_mem_load()),
+                                        quarantine=dict(size=quarantine.total_size(), days=quarantine.KEEP_DAYS)))
         if url.path == "/api/tree":
             q = parse_qs(url.query).get("path", [""])[0]
             lang = "en" if parse_qs(url.query).get("lang", ["he"])[0] == "en" else "he"
@@ -231,6 +299,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, [dict(path=p, size=s, name=os.path.basename(p.rstrip("\\")) or p,
                                          hint=rules.folder_hint(p, lang), has_children=p in disk.get("tree", {}))
                                     for p, s in children])
+        if url.path == "/api/quarantine":
+            return self._send(200, quarantine.list_batches())
         return self._send(404, {"error": "not found"})
 
     def do_POST(self):
@@ -252,6 +322,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def route(self, path, body):
         lang = self._lang()
+        undo = bool(body.get("undo"))
         if path == "/api/scan":
             if State.scan.get("status") == "running":
                 return dict(ok=False, error=msg("scan_running", lang))
@@ -270,21 +341,26 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError(msg("no_step", lang))
             if step["action"]["type"] == "goto":
                 return dict(ok=True)
-            res = execute(step["action"], lang)
+            res = execute(step["action"], lang, undo=undo, title=_step_title(sid))
             State.done_steps[sid] = res
+            State.stats["actions"] += 1
             return dict(ok=True, result=res, disk=disk_now())
         if path == "/api/rule":
             r = rules.rule_by_id(body.get("rule"))
             if not r:
                 raise ValueError(msg("no_rule", lang))
-            if r["action"] in ("clean", "recycle"):
-                res = execute(dict(type="clean_rules", rules=[r["id"]]) if r["action"] == "clean" else dict(type="empty_recycle"), lang)
+            title = {lg: t["title"] for lg, t in rules.rule_text(r).items()}
+            if r["action"] == "clean":
+                res = execute(dict(type="clean_rules", rules=[r["id"]]), lang, undo=undo, title=title)
+            elif r["action"] == "recycle":
+                res = execute(dict(type="empty_recycle"), lang)
             elif r["action"] == "command":
                 res = execute(dict(type="command", command=r["command"], admin=r.get("admin_cmd", True)), lang)
             elif r["action"] == "open":
                 res = execute(dict(type="open", target=r["open_target"]), lang)
             else:
                 raise ValueError(msg("no_action", lang))
+            State.stats["actions"] += 1
             return dict(ok=True, result=res, disk=disk_now())
         if path == "/api/recycle_file":
             p = body.get("path", "")
@@ -293,12 +369,33 @@ class Handler(BaseHTTPRequestHandler):
             size = scanner.tree_size(p)
             if not scanner.send_to_recycle_bin(p):
                 raise ValueError(msg("recycle_failed", lang))
+            State.stats["actions"] += 1
             return dict(ok=True, result=dict(recycled=size), disk=disk_now())
         if path == "/api/delete_nm":
             p = body.get("path", "")
             if os.path.normcase(p) not in _known_paths("nm") or os.path.basename(p).lower() != "node_modules":
                 raise ValueError(msg("not_scanned", lang))
-            return dict(ok=True, result=dict(freed=scanner.delete_tree(p)), disk=disk_now())
+            State.stats["actions"] += 1
+            if undo:
+                project = os.path.basename(os.path.dirname(p))
+                b = quarantine.Batch({"he": f"node_modules של {project}", "en": f"node_modules of {project}"})
+                moved = b.move(p)
+                info = b.save() or {}
+                if not moved:
+                    raise ValueError(msg("recycle_failed", lang))
+                State.stats["quarantined"] += moved
+                return dict(ok=True, result=dict(quarantined=moved, batch=info.get("id"), expires=info.get("expires")),
+                            disk=disk_now())
+            freed = scanner.delete_tree(p)
+            State.stats["freed"] += freed
+            return dict(ok=True, result=dict(freed=freed), disk=disk_now())
+        if path == "/api/quarantine/restore":
+            res = quarantine.restore(body.get("id"))
+            State.stats["quarantined"] = max(0, State.stats["quarantined"] - res["restored"])
+            return dict(ok=True, result=res, disk=disk_now())
+        if path == "/api/quarantine/purge":
+            res = quarantine.purge(body.get("id"))
+            return dict(ok=True, result=res, disk=disk_now())
         if path == "/api/open_location":
             p = body.get("path", "")
             if os.path.normcase(p) not in _known_paths("any"):
@@ -310,6 +407,17 @@ class Handler(BaseHTTPRequestHandler):
             return dict(ok=True)
         if path == "/api/open_recycle_bin":
             os.startfile("shell:RecycleBinFolder")
+            return dict(ok=True)
+        if path == "/api/open_share":
+            # Opens a share page in the user's regular browser (where they are signed in). Fixed URLs only.
+            url = SHARE_URLS.get(body.get("site"))
+            if not url:
+                raise ValueError("unknown site")
+            os.startfile(url)
+            return dict(ok=True)
+        if path == "/api/relaunch_admin":
+            if not relaunch_as_admin():
+                raise ValueError(msg("admin_cancelled", lang))
             return dict(ok=True)
         if path == "/api/quit":
             threading.Thread(target=lambda: (time.sleep(0.5), os._exit(0)), daemon=True).start()
@@ -327,33 +435,47 @@ def _edge_path():
 
 def open_window(url):
     """
-    פותח את הממשק כחלון אפליקציה נפרד (Edge במצב app) עם פרופיל משלו,
-    כך שניקוי המטמון של Chrome/Edge לא מתנגש בחלון של הכלי. סגירת החלון סוגרת את התוכנה.
+    Opens the interface as a separate app window (Edge in app mode) with its own profile,
+    so cleaning the Chrome/Edge cache never conflicts with the tool's window.
+    Closing the window closes the program.
     """
     edge = _edge_path()
     if not edge:
         webbrowser.open(url)
         return
-    profile = os.path.join(os.environ.get("LOCALAPPDATA", ""), "PCDoctor", "window-profile")
+    profile = os.path.join(DATA_DIR, "window-profile")
+    # The window's own profile holds nothing of the user's. If Edge grew it anyway, start fresh.
+    if os.path.isdir(profile) and scanner.tree_size(profile) > 300 * 1024 ** 2:
+        shutil.rmtree(profile, ignore_errors=True)
     started = time.time()
-    proc = subprocess.Popen([edge, f"--app={url}", f"--user-data-dir={profile}", "--no-first-run",
-                             "--no-default-browser-check", "--window-size=1280,900"])
+    proc = subprocess.Popen([
+        edge, f"--app={url}", f"--user-data-dir={profile}", "--window-size=1280,900",
+        "--no-first-run", "--no-default-browser-check",
+        # keep the window lightweight: no component downloads, sync, extensions or shopping features
+        "--disable-component-update", "--disable-background-networking", "--disable-sync", "--disable-extensions",
+        "--disable-features=msEdgeShoppingUI,msWalletCheckout,EdgeCollectionsEnabled,msEdgeSidebarV2",
+    ])
+    State.edge_proc = proc
     proc.wait()
-    if time.time() - started > 5:  # החלון נסגר על ידי המשתמש
+    if time.time() - started > 5:  # the user closed the window
         os._exit(0)
 
 
 def main():
+    if os.environ.get("PCDOCTOR_TEST_STATS"):  # for tests/screenshots only: preload share-card numbers
+        State.stats.update(json.loads(os.environ["PCDOCTOR_TEST_STATS"]))
+    # Delete quarantine batches older than 7 days, in the background.
+    threading.Thread(target=quarantine.purge_expired, daemon=True).start()
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     port = server.server_address[1]
     url = f"http://127.0.0.1:{port}/#t={TOKEN}"
     print("=" * 60)
-    print(" PC Doctor is running. The window opens automatically.")
+    print(f" PC Doctor {__version__} is running. The window opens automatically.")
     print(" If it does not open, paste this address into a browser:")
     print(" " + url)
     print(" To quit: click 'Exit' in the window, or close this console.")
     print("=" * 60)
-    if not os.environ.get("PCDOCTOR_NO_WINDOW"):  # לבדיקות: בלי לפתוח חלון
+    if not os.environ.get("PCDOCTOR_NO_WINDOW"):  # for tests: no window
         threading.Thread(target=open_window, args=(url,), daemon=True).start()
     try:
         server.serve_forever()
