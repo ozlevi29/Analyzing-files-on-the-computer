@@ -20,7 +20,8 @@ import time
 import traceback
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, urlparse
+import base64
 
 FROZEN = getattr(sys, "frozen", False)  # running as PCDoctor.exe (PyInstaller)
 HERE = sys._MEIPASS if FROZEN else os.path.dirname(os.path.abspath(__file__))
@@ -47,8 +48,10 @@ REPO_URL = "https://github.com/ozlevi29/Analyzing-files-on-the-computer"
 AUTHOR_LINKEDIN = "https://www.linkedin.com/in/ozlevi1/"
 # The only external addresses the program ever opens (in the user's regular browser).
 LINKS = {
-    "linkedin": "https://www.linkedin.com/sharing/share-offsite/?url=" + REPO_URL,
-    "facebook": "https://www.facebook.com/sharer/sharer.php?u=" + REPO_URL,
+    # Open a normal "new post" window. Sites do not let other programs attach images or text,
+    # so the card image is saved to Downloads and the text is copied to the clipboard first.
+    "linkedin": "https://www.linkedin.com/feed/?shareActive=true",
+    "facebook": "https://www.facebook.com/",
     "author": AUTHOR_LINKEDIN,
     "repo": REPO_URL,
     "releases": REPO_URL + "/releases",
@@ -428,8 +431,27 @@ class Handler(BaseHTTPRequestHandler):
             url = LINKS.get(body.get("site"))
             if not url:
                 raise ValueError("unknown site")
+            if body.get("site") == "linkedin" and body.get("text"):
+                url += "&text=" + quote(str(body["text"])[:2500])  # LinkedIn pre-fills the post with this text
             open_in_browser(url)
             return dict(ok=True)
+        if path == "/api/save_card":
+            # Saves the share card PNG to the Downloads folder (fixed file name) and shows it in Explorer.
+            data = str(body.get("png", ""))
+            prefix = "data:image/png;base64,"
+            if not data.startswith(prefix):
+                raise ValueError("bad image")
+            raw = base64.b64decode(data[len(prefix):])
+            if raw[1:4] != b"PNG" or len(raw) > 10 * 1024 * 1024:  # PNG signature check
+                raise ValueError("bad image")
+            folder = os.path.join(os.path.expanduser("~"), "Downloads")
+            os.makedirs(folder, exist_ok=True)
+            out = os.path.join(folder, "pc-doctor-result.png")
+            with open(out, "wb") as f:
+                f.write(raw)
+            if body.get("show"):
+                subprocess.Popen(["explorer", "/select,", out])
+            return dict(ok=True, path=out)
         if path == "/api/relaunch_admin":
             if not relaunch_as_admin():
                 raise ValueError(msg("admin_cancelled", lang))
