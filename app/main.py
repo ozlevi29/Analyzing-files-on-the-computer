@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-PC Doctor - a local server that shows its interface in an Edge app window.
+CleanWhy (רופא המחשב) - a local server that shows its interface in an Edge app window.
 
 The server listens only on 127.0.0.1 (this computer) and requires a random key
 created on every start, so other websites open in a browser cannot send it commands.
@@ -23,12 +23,14 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, quote, urlparse
 import base64
 
-FROZEN = getattr(sys, "frozen", False)  # running as PCDoctor.exe (PyInstaller)
+FROZEN = getattr(sys, "frozen", False)  # running as CleanWhy.exe (PyInstaller)
 HERE = sys._MEIPASS if FROZEN else os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 # In the windowed exe there is no console: send output and errors to a log file.
-DATA_DIR = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "PCDoctor")
+DATA_DIR = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "CleanWhy")
+# Before 1.1.0 the program was called "PC Doctor" and kept its data in ...\PCDoctor.
+LEGACY_DIR = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "PCDoctor")
 os.makedirs(DATA_DIR, exist_ok=True)
 if FROZEN or sys.stdout is None or sys.stderr is None:
     _log = open(os.path.join(DATA_DIR, "log.txt"), "a", encoding="utf-8", buffering=1)
@@ -44,7 +46,7 @@ from version import __version__  # noqa: E402
 STATIC = os.path.join(HERE, "static")
 TOKEN = secrets.token_urlsafe(24)
 SYSDRIVE = os.environ.get("SystemDrive", "C:") + "\\"
-REPO_URL = "https://github.com/ozlevi29/Analyzing-files-on-the-computer"
+REPO_URL = "https://github.com/ozlevi29/CleanWhy"
 AUTHOR_LINKEDIN = "https://www.linkedin.com/in/ozlevi1/"
 # The only external addresses the program ever opens (in the user's regular browser).
 LINKS = {
@@ -437,7 +439,7 @@ class Handler(BaseHTTPRequestHandler):
             return dict(ok=True)
         if path == "/api/show_card":
             # Opens File Explorer at the saved share card (fixed file name in Downloads).
-            out = os.path.join(os.path.expanduser("~"), "Downloads", "pc-doctor-result.png")
+            out = os.path.join(os.path.expanduser("~"), "Downloads", "cleanwhy-result.png")
             if os.path.exists(out):
                 subprocess.Popen(["explorer", "/select,", out])
             else:
@@ -454,7 +456,7 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError("bad image")
             folder = os.path.join(os.path.expanduser("~"), "Downloads")
             os.makedirs(folder, exist_ok=True)
-            out = os.path.join(folder, "pc-doctor-result.png")
+            out = os.path.join(folder, "cleanwhy-result.png")
             with open(out, "wb") as f:
                 f.write(raw)
             if body.get("show"):
@@ -507,20 +509,32 @@ def open_window(url):
 
 
 def main():
-    if os.environ.get("PCDOCTOR_TEST_STATS"):  # for tests/screenshots only: preload share-card numbers
-        State.stats.update(json.loads(os.environ["PCDOCTOR_TEST_STATS"]))
+    if os.environ.get("CLEANWHY_TEST_STATS"):  # for tests/screenshots only: preload share-card numbers
+        State.stats.update(json.loads(os.environ["CLEANWHY_TEST_STATS"]))
+    # Clean up what the old "PC Doctor" version left behind: its window profile and log.
+    # Its quarantine stays readable (see quarantine.py) until it expires.
+    old_running = "pcdoctor.exe" in diagnostics._run(["tasklist", "/fo", "csv", "/nh"]).lower()
+    for leftover in (() if old_running else ("window-profile", "log.txt")):  # never while the old version is open
+        p = os.path.join(LEGACY_DIR, leftover)
+        if os.path.isdir(p):
+            shutil.rmtree(p, ignore_errors=True)
+        elif os.path.isfile(p):
+            try:
+                os.remove(p)
+            except OSError:
+                pass
     # Delete quarantine batches older than 7 days, in the background.
     threading.Thread(target=quarantine.purge_expired, daemon=True).start()
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     port = server.server_address[1]
     url = f"http://127.0.0.1:{port}/#t={TOKEN}"
     print("=" * 60)
-    print(f" PC Doctor {__version__} is running. The window opens automatically.")
+    print(f" CleanWhy {__version__} is running. The window opens automatically.")
     print(" If it does not open, paste this address into a browser:")
     print(" " + url)
     print(" To quit: click 'Exit' in the window, or close this console.")
     print("=" * 60)
-    if not os.environ.get("PCDOCTOR_NO_WINDOW"):  # for tests: no window
+    if not os.environ.get("CLEANWHY_NO_WINDOW"):  # for tests: no window
         threading.Thread(target=open_window, args=(url,), daemon=True).start()
     try:
         server.serve_forever()

@@ -109,7 +109,7 @@ const STR = {
     shareHowIntro: "לינקדאין ופייסבוק לא מאפשרים לתוכנות אחרות לצרף תמונה או טקסט לפוסט, ולכן הכנתי לך הכל מראש:",
     shareReady: ["הטקסט של הפוסט הועתק ללוח.", "תמונת הכרטיס נשמרה בקובץ: {path}"],
     shareSteps: ["לחץ \"פתח את {site}\" למטה. ייפתח חלון של פוסט חדש.", "אם הטקסט לא מופיע, לחץ בתוך הפוסט ואז Ctrl+V.",
-      "לחץ על סמל התמונה בחלון הפוסט, ובחר את הקובץ pc-doctor-result.png מתיקיית ההורדות.", "פרסם."],
+      "לחץ על סמל התמונה בחלון הפוסט, ובחר את הקובץ cleanwhy-result.png מתיקיית ההורדות.", "פרסם."],
     shareReadyTitle: "מה כבר מוכן", shareStepsTitle: "מה לעשות", openImgLoc: "פתיחת מיקום התמונה", hideShare: "סגור",
     shareText: "ניקיתי {size} מהמחשב עם רופא המחשב, כלי חינמי בקוד פתוח שמסביר כל פעולה לפני שהוא מבצע אותה.{free}{mem}\n{url}",
     shareTextFree: " המקום הפנוי בדיסק עלה מ-{a} ל-{b}.", shareTextMem: " הזיכרון בשימוש ירד מ-{a}% ל-{b}%.",
@@ -123,7 +123,7 @@ const STR = {
     cfAdmin: "התוכנה תיסגר ותיפתח מחדש עם הרשאות מנהל. Windows ישאל אם לאשר.\n\nעם הרשאות מנהל אפשר לנקות גם תיקיות מערכת (עדכונים ישנים, קבצים זמניים של Windows) ולבטל הפעלה אוטומטית של תוכנות שמותקנות לכל המשתמשים.\n\nתוצאות הסריקה הנוכחית לא יישמרו, ותצטרך לסרוק שוב.",
   },
   en: {
-    appName: "PC Doctor", appSub: "Diagnose, clean up, and understand every action", langBtn: "עברית", quit: "Exit",
+    appName: "CleanWhy", appSub: "Diagnose, clean up, and understand every action", langBtn: "עברית", quit: "Exit",
     introTitle: "Why is my PC slow?",
     introP1: "The scan checks memory, CPU, programs that start with the PC, the internet connection and every file on drive C. At the end you get an explanation of why the PC is slow and a list of steps to fix it. Every step has a Fix button.",
     introP2: "Nothing is deleted or changed during the scan. Before every action a window explains exactly what will happen, and it runs only after you confirm.",
@@ -212,18 +212,18 @@ const STR = {
     shareTitle: "Share your result", shareSub: "A card with what you achieved, for LinkedIn and Facebook. The numbers are measured on your PC.",
     shareNothing: "After you complete at least one fix, a result card to share appears here.",
     cardHeadline: "I cleaned up {size} on my PC", cardFree: "Free disk space", cardMem: "Memory in use", cardStartup: "Programs no longer starting on their own",
-    cardFooter: "PC Doctor · free and open source", saveImg: "Save image", copyText: "Copy text", shareLi: "Share on LinkedIn", shareFb: "Share on Facebook",
+    cardFooter: "CleanWhy · free and open source", saveImg: "Save image", copyText: "Copy text", shareLi: "Share on LinkedIn", shareFb: "Share on Facebook",
     copied: "Text copied. Paste it into your post.", imgSaved: "Image saved: {path}",
     shareHowTitle: "Share on {site}", shareOpen: "Open {site}",
     shareHowIntro: "LinkedIn and Facebook do not let other programs attach an image or text to a post, so everything is ready for you:",
     shareReady: ["The post text was copied to the clipboard.", "The card image was saved as: {path}"],
     shareSteps: ["Click \"Open {site}\" below. A new post window opens.", "If the text is not there, click inside the post and press Ctrl+V.",
-      "Click the photo icon in the post window, and choose pc-doctor-result.png from your Downloads folder.", "Post."],
+      "Click the photo icon in the post window, and choose cleanwhy-result.png from your Downloads folder.", "Post."],
     shareReadyTitle: "Already done", shareStepsTitle: "What to do", openImgLoc: "Open image location", hideShare: "Close",
-    shareText: "I cleaned up {size} on my PC with PC Doctor, a free open-source tool that explains every action before it runs.{free}{mem}\n{url}",
+    shareText: "I cleaned up {size} on my PC with CleanWhy, a free open-source tool that explains every action before it runs.{free}{mem}\n{url}",
     shareTextFree: " Free disk space went from {a} to {b}.", shareTextMem: " Memory in use dropped from {a}% to {b}%.",
     // about
-    about: "About", aboutTitle: "About PC Doctor",
+    about: "About", aboutTitle: "About CleanWhy",
     aboutText: "A free, open-source Windows tool that explains why your PC is slow and what you can safely delete, and explains every action before it runs.",
     aboutBy: "Created by", aboutAuthor: "Oz Levi", aboutLinkedIn: "My LinkedIn profile", aboutRepo: "Source code on GitHub",
     aboutReleases: "Releases and downloads", aboutVersion: "Version {v}", aboutPrivacy: "The program runs only on your computer and sends no data.",
@@ -237,7 +237,7 @@ function initialLang() {
   const fromHash = HASH.get("lang");
   if (fromHash === "he" || fromHash === "en") return fromHash;
   try {
-    const saved = localStorage.getItem("pcdoctor-lang");
+    const saved = localStorage.getItem("cleanwhy-lang");
     if (saved === "he" || saved === "en") return saved;
   } catch (e) { /* storage may be unavailable */ }
   return (navigator.language || "").toLowerCase().startsWith("he") ? "he" : "en";
@@ -263,7 +263,7 @@ function applyLang() {
   document.documentElement.dir = LANG === "he" ? "rtl" : "ltr";
   document.title = L("appName");
   document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = L(el.dataset.i18n); });
-  try { localStorage.setItem("pcdoctor-lang", LANG); } catch (e) { /* ignore */ }
+  try { localStorage.setItem("cleanwhy-lang", LANG); } catch (e) { /* ignore */ }
 }
 
 // ================================================================= utils
@@ -892,7 +892,7 @@ async function renderUndo() {
 }
 
 // ============================================================ share card
-const REPO_URL = "https://github.com/ozlevi29/Analyzing-files-on-the-computer";
+const REPO_URL = "https://github.com/ozlevi29/CleanWhy";
 
 async function refreshStats() {
   try {

@@ -1,4 +1,4 @@
-# PC Doctor
+# CleanWhy
 
 **English** | [עברית](README.he.md)
 
@@ -31,11 +31,11 @@ A free, open-source Windows tool that explains **why your PC is slow** and shows
 
 ### 1. Download
 
-Download **PCDoctor.exe** from the [latest release](https://github.com/ozlevi29/Analyzing-files-on-the-computer/releases/latest). It is a single file. Nothing to install, and no Python needed.
+Download **CleanWhy.exe** from the [latest release](https://github.com/ozlevi29/CleanWhy/releases/latest). It is a single file. Nothing to install, and no Python needed.
 
 ### 2. Run it
 
-Double-click **PCDoctor.exe**. A window opens with the program.
+Double-click **CleanWhy.exe**. A window opens with the program.
 
 Windows may show **"Windows protected your PC"**. This appears for every new program that is not signed with a paid certificate. Click **More info**, then **Run anyway**. You can check that the file is the official one: its SHA-256 fingerprint is published next to it in the release.
 
@@ -87,7 +87,7 @@ It should. It was built and tested on Windows 11, and it uses only Windows featu
 The interface is a small local web page. It opens in a separate Edge app window with its own profile, so it never touches your browser data. Closing the window closes the program.
 
 **How do I uninstall it?**
-Delete PCDoctor.exe. The program also keeps its quarantine and window settings in `%LOCALAPPDATA%\PCDoctor`. Restore or delete anything in the Undo tab first, then delete that folder too.
+Delete CleanWhy.exe. The program also keeps its quarantine and window settings in `%LOCALAPPDATA%\CleanWhy`. Restore or delete anything in the Undo tab first, then delete that folder too.
 
 **Why does my antivirus warn about it?**
 Programs packed into a single exe with PyInstaller are sometimes flagged by mistake. The full source code is in this repository, and you can build the exe yourself with `python tools/build_exe.py`.
@@ -99,7 +99,7 @@ Yes. Each location is one entry in the `RULES` list in [app/rules.py](app/rules.
 
 **Oz Levi** · [LinkedIn](https://www.linkedin.com/in/ozlevi1/)
 
-Questions, ideas and bug reports are welcome in [Issues](https://github.com/ozlevi29/Analyzing-files-on-the-computer/issues).
+Questions, ideas and bug reports are welcome in [Issues](https://github.com/ozlevi29/CleanWhy/issues).
 
 ## License
 
@@ -117,7 +117,7 @@ Questions, ideas and bug reports are welcome in [Issues](https://github.com/ozle
 | `app/report.py` | Builds the "Why is my PC slow" report and its steps, in both languages. |
 | `app/main.py` | The local server that connects the interface to the actions. |
 | `app/static/` | The interface (HTML, CSS, JavaScript). |
-| `tools/build_exe.py` | Builds `dist/<version>/PCDoctor.exe`. |
+| `tools/build_exe.py` | Builds `dist/<version>/CleanWhy.exe`. |
 | `winget/` | The manifest for Windows Package Manager (winget). |
 
 The local server listens only on `127.0.0.1` and requires a random key that is created on every start. Delete actions accept only paths and steps that the scan itself produced.

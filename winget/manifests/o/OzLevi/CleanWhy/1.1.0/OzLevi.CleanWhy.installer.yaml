@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+PackageIdentifier: OzLevi.CleanWhy
+PackageVersion: 1.1.0
+InstallerType: portable
+Commands:
+  - cleanwhy
+ReleaseDate: 2026-09-29
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/ozlevi29/CleanWhy/releases/download/v1.1.0/CleanWhy.exe
+    InstallerSha256: FD62F98764206B792EA24BB51B62BC24CAE87855B1914FF76B560D12AAA8D2C1
+ManifestType: installer
+ManifestVersion: 1.6.0

@@ -26,7 +26,8 @@ def is_admin():
 
 def _protected_paths():
     """תיקיות שהכלי לעולם לא נוגע בהן: הקבצים של עצמו כשהוא רץ כ-exe, ההסגר והפרופיל שלו."""
-    out = [os.path.join(os.environ.get("LOCALAPPDATA", ""), "PCDoctor")]
+    out = [os.path.join(os.environ.get("LOCALAPPDATA", ""), "CleanWhy"),
+           os.path.join(os.environ.get("LOCALAPPDATA", ""), "PCDoctor")]  # old name, before 1.1.0
     if getattr(sys, "_MEIPASS", None):
         out.append(sys._MEIPASS)
     out.append(os.path.dirname(os.path.abspath(sys.executable if getattr(sys, "frozen", False) else __file__)))
@@ -41,7 +42,7 @@ def excluded(path):
     for q in PROTECTED:
         if p == q or p.startswith(q + os.sep):
             return True
-    return os.path.basename(p) == ".pcdoctor-quarantine"
+    return os.path.basename(p) in (".cleanwhy-quarantine", ".pcdoctor-quarantine")
 
 
 def _is_link(entry):

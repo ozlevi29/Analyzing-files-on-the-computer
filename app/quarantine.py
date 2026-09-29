@@ -25,7 +25,15 @@ KEEP_DAYS = 7
 _lock = threading.Lock()
 
 
+QDIR = ".cleanwhy-quarantine"
+LEGACY_QDIR = ".pcdoctor-quarantine"  # name used before 1.1.0, when the program was called "PC Doctor"
+
+
 def _local_root():
+    return os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "CleanWhy", "quarantine")
+
+
+def _legacy_local_root():
     return os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "PCDoctor", "quarantine")
 
 
@@ -35,15 +43,16 @@ def root_for(path):
     drive = os.path.splitdrive(os.path.abspath(path))[0].upper()
     if drive == os.path.splitdrive(local)[0].upper():
         return local
-    return os.path.join(drive + "\\", ".pcdoctor-quarantine")
+    return os.path.join(drive + "\\", QDIR)
 
 
 def _all_roots():
-    roots = {_local_root()}
+    roots = {_local_root(), _legacy_local_root()}
     for i in range(26):
-        r = f"{chr(65 + i)}:\\.pcdoctor-quarantine"
-        if os.path.isdir(r):
-            roots.add(r)
+        for name in (QDIR, LEGACY_QDIR):
+            r = f"{chr(65 + i)}:\\{name}"
+            if os.path.isdir(r):
+                roots.add(r)
     return [r for r in roots if os.path.isdir(r)]
 
 
