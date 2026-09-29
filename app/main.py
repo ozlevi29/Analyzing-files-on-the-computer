@@ -148,6 +148,16 @@ def _chrome_path():
     return None
 
 
+def open_in_browser(url):
+    """Opens a web page in Chrome when it is installed (where people are usually signed in to LinkedIn
+    and Facebook), otherwise in the default browser."""
+    chrome = _chrome_path()
+    if chrome:
+        subprocess.Popen([chrome, url])
+    else:
+        os.startfile(url)
+
+
 def run_command(cmd, admin):
     if admin:
         # Opens a cmd window with an administrator (UAC) prompt. The command is fixed in the code, never user input.
@@ -418,7 +428,7 @@ class Handler(BaseHTTPRequestHandler):
             url = LINKS.get(body.get("site"))
             if not url:
                 raise ValueError("unknown site")
-            os.startfile(url)
+            open_in_browser(url)
             return dict(ok=True)
         if path == "/api/relaunch_admin":
             if not relaunch_as_admin():
