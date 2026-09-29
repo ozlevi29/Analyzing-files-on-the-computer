@@ -60,7 +60,7 @@ h1, h2, h3 { margin: 0; line-height: 1.25; }
 .hidden { display: none !important; }
 .muted { color: var(--muted); }
 .small { font-size: 13px; }
-.mono { font-family: Consolas, "Cascadia Mono", monospace; direction: ltr; text-align: right; unicode-bidi: plaintext; word-break: break-all; }
+.mono { font-family: Consolas, "Cascadia Mono", monospace; direction: ltr; unicode-bidi: plaintext; word-break: break-all; }
 .num { font-variant-numeric: tabular-nums; }
 
 /* header */
@@ -161,7 +161,7 @@ main { max-width: 1120px; margin: 0 auto; padding: 24px 16px 80px; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 12px; box-shadow: var(--shadow); }
 .card-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .card-head h3 { font-size: 16px; flex: 1; min-width: 200px; }
-.size { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 80px; text-align: left; }
+.size { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 80px; text-align: end; }
 .explain { display: grid; grid-template-columns: 140px 1fr; gap: 6px 16px; margin-top: 12px; font-size: 14px; }
 .explain dt { color: var(--muted); font-weight: 600; }
 .explain dd { margin: 0; }
@@ -172,7 +172,7 @@ details.paths ul { margin: 6px 0 0; padding-inline-start: 18px; }
 
 /* tables */
 .tbl { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
-.tbl th, .tbl td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: top; }
+.tbl th, .tbl td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: start; vertical-align: top; }
 .tbl th { font-size: 13px; color: var(--muted); background: var(--panel-2); font-weight: 600; }
 .tbl td.act, .tbl td.num { white-space: nowrap; }
 .tbl tr:last-child td { border-bottom: 0; }
@@ -185,7 +185,7 @@ details.paths ul { margin: 6px 0 0; padding-inline-start: 18px; }
 .node-row:hover { background: var(--panel-2); }
 .twisty { width: 20px; height: 20px; border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 12px; flex: none; }
 .node-name { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.node-size { font-variant-numeric: tabular-nums; width: 80px; flex: none; text-align: left; }
+.node-size { font-variant-numeric: tabular-nums; width: 80px; flex: none; text-align: end; }
 .node-bar { width: 120px; height: 6px; border-radius: 99px; background: var(--panel-2); border: 1px solid var(--line); overflow: hidden; flex: none; }
 .node-bar > div { height: 100%; background: var(--accent); }
 .node-hint { font-size: 12px; color: var(--muted); flex: 1; min-width: 0; }
@@ -245,7 +245,7 @@ details.paths ul { margin: 6px 0 0; padding-inline-start: 18px; }
 .chg-list li::before { content: "•"; position: absolute; inset-inline-start: 6px; color: var(--caution); font-weight: 800; }
 .path-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 .path-tbl td { padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
-.path-tbl td.num { white-space: nowrap; text-align: left; width: 90px; }
+.path-tbl td.num { white-space: nowrap; text-align: end; width: 90px; }
 .path-wrap { max-height: 220px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); }
 details.rule-sec { border: 1px solid var(--line); border-radius: 10px; margin: 10px 0; background: var(--panel); }
 details.rule-sec > summary { cursor: pointer; padding: 12px 14px; display: flex; gap: 10px; align-items: center; font-weight: 700; list-style: none; }
@@ -255,3 +255,9 @@ details.rule-sec[open] > summary::before { transform: rotate(-90deg); }
 details.rule-sec > summary .sz { margin-inline-start: auto; font-variant-numeric: tabular-nums; }
 .rule-sec-body { padding: 0 14px 12px; }
 .howbox { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 14px; }
+
+/* direction-specific details (Hebrew = rtl, English = ltr) */
+:root[dir="rtl"] .mono { text-align: right; }
+:root[dir="ltr"] .mono { text-align: left; }
+:root[dir="ltr"] details.rule-sec > summary::before { content: "▶"; }
+:root[dir="ltr"] details.rule-sec[open] > summary::before { transform: rotate(90deg); }

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>רופא המחשב</title>
+<title>PC Doctor</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -13,46 +13,46 @@
       <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M3 4h18v12H3zM1 18h22v2H1z" opacity=".25"/><path fill="none" stroke="currentColor" stroke-width="2" d="M5 11h3l2-4 3 7 2-3h4"/></svg>
     </div>
     <div>
-      <h1>רופא המחשב</h1>
-      <div class="sub">אבחון, ניקוי והסבר מסודר לכל פעולה</div>
+      <h1 data-i18n="appName"></h1>
+      <div class="sub" data-i18n="appSub"></div>
     </div>
   </div>
   <div class="diskbox" id="diskbox"></div>
   <div class="top-actions">
     <span class="badge" id="adminBadge"></span>
-    <button class="btn ghost" id="quitBtn">יציאה</button>
+    <button class="btn ghost small" id="langBtn" data-i18n="langBtn"></button>
+    <button class="btn ghost" id="quitBtn" data-i18n="quit"></button>
   </div>
 </header>
 
 <main>
-  <!-- מסך פתיחה -->
+  <!-- start screen -->
   <section id="intro" class="panel intro">
-    <h2>למה המחשב איטי?</h2>
-    <p>הסריקה בודקת את הזיכרון, המעבד, התוכנות שנפתחות עם המחשב, החיבור לאינטרנט ואת כל הקבצים בכונן C.
-      בסוף תקבל הסבר למה המחשב איטי, ורשימת צעדי טיפול. ליד כל צעד יש כפתור <b>טפל</b>.</p>
-    <p class="muted">שום דבר לא נמחק ולא משתנה בזמן הסריקה. לפני כל פעולה יופיע חלון שמסביר בדיוק מה יקרה, ורק אחרי שתאשר היא תתבצע.</p>
-    <label class="check"><input type="checkbox" id="deepChk" checked> סריקה מלאה של כל הכונן (לוקחת כמה דקות, ומוצאת קבצים ותיקיות גדולים)</label>
-    <button class="btn primary big" id="scanBtn">סרוק את המחשב</button>
+    <h2 data-i18n="introTitle"></h2>
+    <p data-i18n="introP1"></p>
+    <p class="muted" data-i18n="introP2"></p>
+    <label class="check"><input type="checkbox" id="deepChk" checked> <span data-i18n="deepChk"></span></label>
+    <button class="btn primary big" id="scanBtn" data-i18n="scanBtn"></button>
   </section>
 
-  <!-- התקדמות -->
+  <!-- progress -->
   <section id="progress" class="panel hidden">
-    <h2 id="progLabel">סורק…</h2>
+    <h2 id="progLabel"></h2>
     <div class="bar"><div id="progBar"></div></div>
     <div class="prog-meta"><span id="progPct">0%</span><span id="progFiles"></span></div>
     <div class="muted small mono" id="progDetail"></div>
-    <button class="btn ghost" id="cancelBtn">דלג על סריקת הכונן המלאה</button>
+    <button class="btn ghost" id="cancelBtn" data-i18n="skipDeep"></button>
   </section>
 
-  <!-- תוצאות -->
+  <!-- results -->
   <section id="results" class="hidden">
     <nav class="tabs" role="tablist">
-      <button class="tab active" data-tab="report">למה המחשב איטי</button>
-      <button class="tab" data-tab="clean">מה אפשר למחוק</button>
-      <button class="tab" data-tab="disk">קבצים ותיקיות גדולים</button>
-      <button class="tab" data-tab="system">פרטי מערכת</button>
+      <button class="tab active" data-tab="report" data-i18n="tabReport"></button>
+      <button class="tab" data-tab="clean" data-i18n="tabClean"></button>
+      <button class="tab" data-tab="disk" data-i18n="tabDisk"></button>
+      <button class="tab" data-tab="system" data-i18n="tabSystem"></button>
       <span class="spacer"></span>
-      <button class="btn ghost small" id="rescanBtn">סריקה חוזרת</button>
+      <button class="btn ghost small" id="rescanBtn" data-i18n="rescan"></button>
     </nav>
     <div class="tabpane" id="tab-report"></div>
     <div class="tabpane hidden" id="tab-clean"></div>
@@ -61,36 +61,36 @@
   </section>
 </main>
 
-<!-- חלון אישור -->
+<!-- confirmation dialog -->
 <div class="modal hidden" id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
   <div class="modal-card">
     <div class="modal-head">
       <span class="warn-ic" aria-hidden="true">!</span>
-      <h3 id="mTitle">האם אתה בטוח?</h3>
+      <h3 id="mTitle"></h3>
     </div>
     <div class="modal-body">
-      <div class="m-label">מה יקרה:</div>
+      <div class="m-label" data-i18n="whatHappens"></div>
       <div id="mText" class="m-text"></div>
     </div>
     <div class="modal-foot">
-      <button class="btn primary" id="mYes">כן, בצע</button>
-      <button class="btn ghost" id="mNo">ביטול</button>
+      <button class="btn primary" id="mYes"></button>
+      <button class="btn ghost" id="mNo" data-i18n="cancel"></button>
     </div>
   </div>
 </div>
 
-<!-- חלון מידע מפורט (כפתור i) -->
+<!-- detailed info popup ("i" button) -->
 <div class="modal hidden" id="info" role="dialog" aria-modal="true" aria-labelledby="iTitle">
   <div class="modal-card info-card">
     <div class="modal-head">
       <span class="info-ic" aria-hidden="true">i</span>
       <h3 id="iTitle"></h3>
-      <button class="x-btn" id="iClose" aria-label="סגור">✕</button>
+      <button class="x-btn" id="iClose" aria-label="Close">✕</button>
     </div>
     <div class="modal-body" id="iBody"></div>
     <div class="modal-foot">
       <button class="btn primary" id="iAct"></button>
-      <button class="btn ghost" id="iNo">סגור</button>
+      <button class="btn ghost" id="iNo" data-i18n="close"></button>
     </div>
   </div>
 </div>

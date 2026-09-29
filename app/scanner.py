@@ -217,13 +217,11 @@ def measure_rules(progress=None):
     admin = is_admin()
     for i, r in enumerate(rules.RULES):
         if progress:
-            progress(i, len(rules.RULES), r["title"])
-        item = {k: r.get(k) for k in ("id", "title", "category", "safety", "action", "what", "if_deleted", "how",
-                                       "command", "open_target")}
+            progress(i, len(rules.RULES), {lg: t["title"] for lg, t in rules.rule_text(r).items()})
+        item = {k: r.get(k) for k in ("id", "category", "safety", "action", "command", "open_target")}
         item["admin"] = bool(r.get("admin")) or (r["action"] == "command" and r.get("admin_cmd", True))
         item["needs_admin_now"] = bool(r.get("admin")) and not admin
-        item["safety_label"] = rules.SAFETY_LABELS[r["safety"]]
-        item["category_label"] = rules.CATEGORIES[r["category"]]
+        item["text"] = rules.rule_text(r)  # {"he": {...}, "en": {...}}
         if r["id"] == "recycle_bin":
             size, count = recycle_bin_info()
             item["size"], item["paths"], item["count"] = size, [], count
@@ -239,7 +237,6 @@ def measure_rules(progress=None):
             item["path_sizes"] = sizes
             item["size"] = sum(x["size"] for x in sizes)
         item["min_age_days"] = r.get("min_age_days", 0)
-        item["details"] = rules.rule_details(r["id"])
         results.append(item)
     return results
 
@@ -262,7 +259,7 @@ def old_downloads(days=30, min_size=5 * 1024 * 1024):
             if st.st_mtime < cutoff and size >= min_size:
                 safety, hint = rules.file_hint(e.path)
                 if e.is_dir(follow_symlinks=False):
-                    safety, hint = "caution", "תיקייה בתוך ההורדות. בדוק את התוכן לפני מחיקה."
+                    safety, hint = "caution", rules.downloads_dir_hint()
                 out.append(dict(path=e.path, size=size, mtime=st.st_mtime, safety=safety, hint=hint,
                                 is_dir=e.is_dir(follow_symlinks=False)))
         except OSError:
@@ -344,8 +341,8 @@ class DiskScan:
             root=self.root,
             total=total[0] if total else 0,
             tree={k or "": sorted(v, key=lambda x: -x[1]) for k, v in tree.items()},
-            large_files=[dict(path=p, size=s, safety=rules.file_hint(p)[0], hint=rules.file_hint(p)[1])
-                         for p, s in large[:300]],
+            large_files=[dict(path=p, size=s, safety=h[0], hint=h[1])
+                         for p, s in large[:300] for h in [rules.file_hint(p)]],
             node_modules=[dict(path=p, project=os.path.dirname(p), size=s) for p, s in node_modules],
             denied=self.denied,
             files=self.files,

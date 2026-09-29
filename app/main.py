@@ -24,12 +24,37 @@ from urllib.parse import parse_qs, urlparse
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import diagnostics  # noqa: E402
+import report  # noqa: E402
 import rules  # noqa: E402
 import scanner  # noqa: E402
 
 STATIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 TOKEN = secrets.token_urlsafe(24)
 SYSDRIVE = os.environ.get("SystemDrive", "C:") + "\\"
+
+MSG = {
+    "cmd_opened": ("נפתח חלון פקודה. אם Windows מבקש אישור מנהל, לחץ \"כן\". עקוב אחרי החלון עד שהוא מסיים.",
+                   "A command window opened. If Windows asks for administrator approval, click \"Yes\". Follow the window until it finishes."),
+    "startup_off": ("בוטל. התוכנה לא תיפתח יותר בהדלקת המחשב.", "Done. The program will no longer open when the PC starts."),
+    "opened": ("נפתח.", "Opened."),
+    "no_chrome": ("Chrome לא נמצא. פתח את Chrome והקלד בשורת הכתובת: ", "Chrome was not found. Open Chrome and type in the address bar: "),
+    "chrome_opened": ("נפתח ב-Chrome.", "Opened in Chrome."),
+    "restart": ("המחשב יופעל מחדש בעוד דקה. לביטול: shutdown /a בחלון פקודה.",
+                "The PC will restart in one minute. To cancel: shutdown /a in a command window."),
+    "no_permission": ("אין הרשאה. נסה להפעיל את הכלי כמנהל.", "Permission denied. Try running the tool as administrator."),
+    "scan_running": ("סריקה כבר רצה", "A scan is already running"),
+    "no_step": ("הצעד לא נמצא. הרץ סריקה מחדש.", "Step not found. Run the scan again."),
+    "no_rule": ("כלל לא מוכר", "Unknown item"),
+    "no_action": ("לפריט הזה אין פעולה אוטומטית", "This item has no automatic action"),
+    "not_scanned": ("הנתיב לא הופיע בתוצאות הסריקה", "This path was not in the scan results"),
+    "recycle_failed": ("לא הצלחתי להעביר לסל המחזור. ייתכן שהקובץ פתוח בתוכנה אחרת.",
+                       "Could not move to the Recycle Bin. The file may be open in another program."),
+}
+
+
+def msg(key, lang):
+    he, en = MSG[key]
+    return he if lang == "he" else en
 
 
 class State:
@@ -44,13 +69,13 @@ class State:
 def run_scan(deep):
     st = State.scan
     try:
-        st.update(status="running", stage=1, stage_label="בודק זיכרון, מעבד, תוכנות הפעלה ורשת", pct=2, started=time.time())
+        st.update(status="running", stage=1, pct=2, started=time.time())
         diag = diagnostics.collect()
 
-        st.update(stage=2, stage_label="מודד תיקיות זבל ומטמונים מוכרים", pct=10)
+        st.update(stage=2, pct=10)
 
         def prog(i, n, title):
-            st.update(pct=10 + int(i / n * 20), detail=title)
+            st.update(pct=10 + int(i / n * 20), detail=title)  # title = {"he": ..., "en": ...}
         rule_items = scanner.measure_rules(prog)
         downloads = scanner.old_downloads()
 
@@ -59,7 +84,7 @@ def run_scan(deep):
             ds = scanner.DiskScan(SYSDRIVE)
             State.disk_scan = ds
             used = shutil.disk_usage(SYSDRIVE).used
-            st.update(stage=3, stage_label="סורק את כל הכונן (זה השלב הארוך)", pct=30)
+            st.update(stage=3, pct=30)
             t = threading.Thread(target=ds.run, daemon=True)
             t.start()
             while t.is_alive():
@@ -68,13 +93,13 @@ def run_scan(deep):
                           detail=ds.current, files=ds.files, scanned=ds.bytes)
             disk = ds.result
 
-        st.update(stage=4, stage_label="מכין דוח", pct=97)
-        findings = diagnostics.build_report(diag, rule_items, disk)
+        st.update(stage=4, pct=97, detail="")
+        findings = report.build_all(diag, rule_items, disk)  # {"he": [...], "en": [...]}
         with State.lock:
             State.results = dict(diag=diag, rules=rule_items, downloads=downloads, disk=disk,
                                  findings=findings, finished=time.time(), deep=deep)
             State.done_steps = {}
-        st.update(status="done", pct=100, stage_label="הסריקה הסתיימה")
+        st.update(status="done", pct=100)
     except Exception as e:  # noqa: BLE001
         traceback.print_exc()
         st.update(status="error", error=str(e))
@@ -100,7 +125,7 @@ def run_command(cmd, admin):
         subprocess.Popen(["cmd", "/k", cmd], creationflags=subprocess.CREATE_NEW_CONSOLE)
 
 
-def execute(action):
+def execute(action, lang="he"):
     t = action["type"]
     if t == "clean_rules":
         freed = skipped = 0
@@ -116,22 +141,22 @@ def execute(action):
         return dict(freed=scanner.empty_recycle_bin())
     if t == "command":
         run_command(action["command"], action.get("admin", True))
-        return dict(message="נפתח חלון פקודה. אם Windows מבקש אישור מנהל, לחץ \"כן\". עקוב אחרי החלון עד שהוא מסיים.")
+        return dict(message=msg("cmd_opened", lang))
     if t == "disable_startup":
         diagnostics.set_startup_enabled(action["hive"], action["sub"], action["name"], False)
-        return dict(message="בוטל. התוכנה לא תיפתח יותר בהדלקת המחשב.")
+        return dict(message=msg("startup_off", lang))
     if t == "open":
         os.startfile(action["target"])
-        return dict(message="נפתח.")
+        return dict(message=msg("opened", lang))
     if t == "open_chrome":
         chrome = _chrome_path()
         if not chrome:
-            return dict(message="Chrome לא נמצא. פתח את Chrome והקלד בשורת הכתובת: " + action["url"])
+            return dict(message=msg("no_chrome", lang) + action["url"])
         subprocess.Popen([chrome, action["url"]])
-        return dict(message="נפתח ב-Chrome.")
+        return dict(message=msg("chrome_opened", lang))
     if t == "restart":
         subprocess.Popen(["shutdown", "/r", "/t", "60"], creationflags=diagnostics.NO_WINDOW)
-        return dict(message="המחשב יופעל מחדש בעוד דקה. לביטול: shutdown /a בחלון פקודה.")
+        return dict(message=msg("restart", lang))
     raise ValueError("unknown action")
 
 
@@ -171,6 +196,9 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def _lang(self):
+        return "en" if (self.headers.get("X-Lang") or "").lower() == "en" else "he"
+
     def _authorized(self):
         host = (self.headers.get("Host") or "").split(":")[0]
         return host in ("127.0.0.1", "localhost") and secrets.compare_digest(self.headers.get("X-Token", ""), TOKEN)
@@ -197,10 +225,11 @@ class Handler(BaseHTTPRequestHandler):
                                         disk=disk_now(), admin=scanner.is_admin()))
         if url.path == "/api/tree":
             q = parse_qs(url.query).get("path", [""])[0]
+            lang = "en" if parse_qs(url.query).get("lang", ["he"])[0] == "en" else "he"
             disk = (State.results or {}).get("disk") or {}
             children = disk.get("tree", {}).get(q, [])
             return self._send(200, [dict(path=p, size=s, name=os.path.basename(p.rstrip("\\")) or p,
-                                         hint=rules.folder_hint(p), has_children=p in disk.get("tree", {}))
+                                         hint=rules.folder_hint(p, lang), has_children=p in disk.get("tree", {}))
                                     for p, s in children])
         return self._send(404, {"error": "not found"})
 
@@ -216,15 +245,16 @@ class Handler(BaseHTTPRequestHandler):
         try:
             return self._send(200, self.route(url.path, body))
         except PermissionError as e:
-            return self._send(400, {"error": "אין הרשאה. נסה להפעיל את הכלי כמנהל. (" + str(e) + ")"})
+            return self._send(400, {"error": msg("no_permission", self._lang()) + " (" + str(e) + ")"})
         except Exception as e:  # noqa: BLE001
             traceback.print_exc()
             return self._send(400, {"error": str(e)})
 
     def route(self, path, body):
+        lang = self._lang()
         if path == "/api/scan":
             if State.scan.get("status") == "running":
-                return dict(ok=False, error="סריקה כבר רצה")
+                return dict(ok=False, error=msg("scan_running", lang))
             State.scan = dict(status="running", pct=0)
             threading.Thread(target=run_scan, args=(bool(body.get("deep", True)),), daemon=True).start()
             return dict(ok=True)
@@ -234,44 +264,45 @@ class Handler(BaseHTTPRequestHandler):
             return dict(ok=True)
         if path == "/api/fix":
             sid = body.get("step")
-            step = next((s for s in diagnostics.all_steps((State.results or {}).get("findings", [])) if s["id"] == sid), None)
+            findings = ((State.results or {}).get("findings") or {}).get("he", [])  # same ids and actions in both languages
+            step = next((s for s in report.all_steps(findings) if s["id"] == sid), None)
             if not step:
-                raise ValueError("הצעד לא נמצא. הרץ סריקה מחדש.")
+                raise ValueError(msg("no_step", lang))
             if step["action"]["type"] == "goto":
                 return dict(ok=True)
-            res = execute(step["action"])
+            res = execute(step["action"], lang)
             State.done_steps[sid] = res
             return dict(ok=True, result=res, disk=disk_now())
         if path == "/api/rule":
             r = rules.rule_by_id(body.get("rule"))
             if not r:
-                raise ValueError("כלל לא מוכר")
+                raise ValueError(msg("no_rule", lang))
             if r["action"] in ("clean", "recycle"):
-                res = execute(dict(type="clean_rules", rules=[r["id"]]) if r["action"] == "clean" else dict(type="empty_recycle"))
+                res = execute(dict(type="clean_rules", rules=[r["id"]]) if r["action"] == "clean" else dict(type="empty_recycle"), lang)
             elif r["action"] == "command":
-                res = execute(dict(type="command", command=r["command"], admin=r.get("admin_cmd", True)))
+                res = execute(dict(type="command", command=r["command"], admin=r.get("admin_cmd", True)), lang)
             elif r["action"] == "open":
-                res = execute(dict(type="open", target=r["open_target"]))
+                res = execute(dict(type="open", target=r["open_target"]), lang)
             else:
-                raise ValueError("לפריט הזה אין פעולה אוטומטית")
+                raise ValueError(msg("no_action", lang))
             return dict(ok=True, result=res, disk=disk_now())
         if path == "/api/recycle_file":
             p = body.get("path", "")
             if os.path.normcase(p) not in _known_paths("files"):
-                raise ValueError("הנתיב לא הופיע בתוצאות הסריקה")
+                raise ValueError(msg("not_scanned", lang))
             size = scanner.tree_size(p)
             if not scanner.send_to_recycle_bin(p):
-                raise ValueError("לא הצלחתי להעביר לסל המחזור. ייתכן שהקובץ פתוח בתוכנה אחרת.")
+                raise ValueError(msg("recycle_failed", lang))
             return dict(ok=True, result=dict(recycled=size), disk=disk_now())
         if path == "/api/delete_nm":
             p = body.get("path", "")
             if os.path.normcase(p) not in _known_paths("nm") or os.path.basename(p).lower() != "node_modules":
-                raise ValueError("הנתיב לא הופיע בתוצאות הסריקה")
+                raise ValueError(msg("not_scanned", lang))
             return dict(ok=True, result=dict(freed=scanner.delete_tree(p)), disk=disk_now())
         if path == "/api/open_location":
             p = body.get("path", "")
             if os.path.normcase(p) not in _known_paths("any"):
-                raise ValueError("הנתיב לא הופיע בתוצאות הסריקה")
+                raise ValueError(msg("not_scanned", lang))
             if os.path.isdir(p):
                 os.startfile(p)
             else:
@@ -317,10 +348,10 @@ def main():
     port = server.server_address[1]
     url = f"http://127.0.0.1:{port}/#t={TOKEN}"
     print("=" * 60)
-    print(" רופא המחשב פועל. הממשק נפתח בדפדפן.")
-    print(" אם הוא לא נפתח, העתק את הכתובת הזו לדפדפן:")
+    print(" PC Doctor is running. The window opens automatically.")
+    print(" If it does not open, paste this address into a browser:")
     print(" " + url)
-    print(" כדי לסגור את התוכנה: לחץ 'יציאה' בממשק או סגור את החלון הזה.")
+    print(" To quit: click 'Exit' in the window, or close this console.")
     print("=" * 60)
     if not os.environ.get("PCDOCTOR_NO_WINDOW"):  # לבדיקות: בלי לפתוח חלון
         threading.Thread(target=open_window, args=(url,), daemon=True).start()

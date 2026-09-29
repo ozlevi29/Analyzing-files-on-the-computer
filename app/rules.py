@@ -19,6 +19,8 @@
 
 import os
 
+import rules_en
+
 HOME = os.path.expanduser("~")
 SYS = os.environ.get("SystemDrive", "C:") + "\\"
 WIN = os.environ.get("WINDIR", r"C:\Windows")
@@ -520,7 +522,7 @@ DETAILS = {
     "chrome_cache": dict(
         verdict="לא יהרוס כלום. שום דבר שאתה רואה ב-Chrome לא ייעלם.",
         details="כל פעם שאתה נכנס לאתר, Chrome שומר עותק של התמונות, הקוד והסרטונים שלו, כדי שבפעם הבאה ייטען מהר יותר. "
-                "המטמון גדל כל הזמן, ואצלך יש הרבה פרופילים של Chrome, לכל אחד מטמון משלו. "
+                "המטמון גדל כל הזמן, ואם יש לך כמה פרופילים של Chrome, לכל אחד מהם מטמון משלו. "
                 "הכלי מוחק רק את תיקיות המטמון (Cache, Code Cache, GPUCache ו-ShaderCache), ולא נוגע בשום קובץ אחר בפרופיל.",
         not_affected=["סיסמאות שמורות", "סימניות (מועדפים)", "היסטוריית גלישה",
                       "התחברויות לאתרים (עוגיות). לא תצטרך להתחבר מחדש ל-Gmail, פייסבוק וכו'",
@@ -556,7 +558,7 @@ DETAILS = {
     ),
     "capcut_old": dict(
         verdict="לא יהרוס כלום. CapCut ימשיך לעבוד עם הגרסה החדשה.",
-        details="בכל עדכון, CapCut מתקין את הגרסה החדשה בתיקייה נפרדת ומשאיר את הישנה. אצלך יש 11 גרסאות מותקנות, "
+        details="בכל עדכון, CapCut מתקין את הגרסה החדשה בתיקייה נפרדת ומשאיר את הישנה. כך מצטברות הרבה גרסאות מותקנות, "
                 "אבל רק האחרונה בשימוש. הכלי מוחק את כל תיקיות הגרסאות מלבד החדשה ביותר.",
         not_affected=["הפרויקטים והטיוטות שלך ב-CapCut", "סרטונים שייצאת", "ההתחברות שלך ל-CapCut",
                       "הגרסה החדשה של CapCut, שנשארת מותקנת ועובדת"],
@@ -620,7 +622,7 @@ DETAILS = {
         verdict="לא יהרוס כלום. אלה יומנים וקבצי קריסה ישנים בלבד.",
         details="Gradle הוא הכלי שבונה אפליקציות Android. הוא מריץ תהליך רקע (daemon) שכותב יומן לתיקייה הזו. "
                 "כשהתהליך קורס מחוסר זיכרון, Java שומרת \"צילום\" של הזיכרון שלו (core.*.dmp) בגודל 2 עד 3 GB. "
-                "אצלך הצטברו עשרות קבצים כאלה מ-2024. אף תוכנה לא קוראת אותם אחרי שנוצרו.",
+                "אצל מפתחי Android הקבצים האלה יכולים להצטבר לעשרות. אף תוכנה לא קוראת אותם אחרי שנוצרו.",
         not_affected=["קוד המקור של אפליקציות ה-Android שלך", "Android Studio וההגדרות שלו",
                       "מטמון החבילות של Gradle (בתיקייה אחרת, caches)", "אמולטורים ו-SDK",
                       "קבצים מ-24 השעות האחרונות (למקרה שבנייה רצה עכשיו)"],
@@ -656,7 +658,7 @@ DETAILS = {
         details="כל גרסה של Android Studio יוצרת תיקייה עם הגדרות, מטמון ויומנים. כשמעדכנים, הגרסה החדשה מעתיקה את ההגדרות, "
                 "והתיקייה הישנה נשארת. הכלי שומר את התיקייה של הגרסה החדשה ביותר ומוחק רק את הישנות.",
         not_affected=["הגרסה הנוכחית של Android Studio וההגדרות שלה", "הפרויקטים שלך", "SDK ואמולטורים"],
-        after=["אם עדיין מותקנת אצלך גרסה ישנה של Android Studio ואתה פותח אותה, היא תתחיל עם הגדרות ברירת מחדל."],
+        after=["אם עדיין מותקנת במחשב גרסה ישנה של Android Studio ואתה פותח אותה, היא תתחיל עם הגדרות ברירת מחדל."],
         undo="אין צורך.",
     ),
     "hiberfil": dict(
@@ -710,10 +712,6 @@ DETAILS = {
 }
 
 
-def rule_details(rid):
-    return DETAILS.get(rid, {})
-
-
 def rule_by_id(rid):
     for r in RULES:
         if r["id"] == rid:
@@ -740,55 +738,93 @@ EXT_HINTS = [
 ]
 
 SYSTEM_FILES = {"pagefile.sys", "hiberfil.sys", "swapfile.sys"}
+LANGS = ("he", "en")
+
+
+def _both(he, en):
+    return {"he": he, "en": en}
+
+
+def rule_text(r):
+    """כל הטקסטים של כלל, בשתי השפות: {"he": {...}, "en": {...}}."""
+    he = {k: r.get(k) for k in ("title", "what", "if_deleted", "how")}
+    he.update(DETAILS.get(r["id"], {}))
+    he["safety_label"] = SAFETY_LABELS[r["safety"]]
+    he["category_label"] = CATEGORIES[r["category"]]
+    en = dict(rules_en.TEXT.get(r["id"], {}))
+    for k, v in he.items():  # אם חסר תרגום, נופלים לעברית ולא לריק
+        en.setdefault(k, v)
+    en["safety_label"] = rules_en.SAFETY_LABELS[r["safety"]]
+    en["category_label"] = rules_en.CATEGORIES[r["category"]]
+    return _both(he, en)
 
 
 def file_hint(path):
-    """מחזיר (רמת בטיחות, הסבר) עבור קובץ גדול לפי המיקום והסיומת."""
+    """מחזיר (רמת בטיחות, {"he": הסבר, "en": explanation}) עבור קובץ לפי המיקום והסיומת."""
+    E = rules_en
     low = path.lower()
     if os.path.basename(low) in SYSTEM_FILES:
-        return "keep", "קובץ מערכת. לא למחוק ידנית. ההסבר המלא בלשונית \"מה אפשר למחוק\"."
+        return "keep", _both("קובץ מערכת. לא למחוק ידנית. ההסבר המלא בלשונית \"מה אפשר למחוק\".", E.SYSTEM_FILE)
     if low.startswith(WIN.lower() + "\\") or "\\program files" in low or low.startswith(PD.lower() + "\\package cache"):
-        return "keep", "קובץ של Windows או של תוכנה מותקנת. לא למחוק ידנית. אם התוכנה לא בשימוש, הסר אותה דרך הגדרות > אפליקציות."
-    base = "קובץ של תוכנה, בתוך AppData. " if "\\appdata\\" in low else ""
+        return "keep", _both("קובץ של Windows או של תוכנה מותקנת. לא למחוק ידנית. אם התוכנה לא בשימוש, "
+                             "הסר אותה דרך הגדרות > אפליקציות.", E.PROGRAM_FILE)
+    in_appdata = "\\appdata\\" in low
+    base_he = "קובץ של תוכנה, בתוך AppData. " if in_appdata else ""
+    base_en = E.APPDATA_PREFIX if in_appdata else ""
     ext = os.path.splitext(low)[1]
-    for exts, safety, text in EXT_HINTS:
+    en_texts = list(E.EXT_HINTS.values())
+    for i, (exts, safety, text) in enumerate(EXT_HINTS):
         if ext in exts:
+            en = en_texts[i]
             if "\\downloads\\" in low and safety != "keep":
                 text += " הקובץ נמצא בתיקיית ההורדות, ושם בדרך כלל יושבים קבצים שכבר לא צריך."
-            return safety, base + text
-    if base:
-        return "caution", base + "לא למחוק בלי לדעת לאיזו תוכנה הוא שייך. אם התוכנה לא בשימוש, הסר אותה במקום למחוק קבצים."
-    return "caution", "קובץ לא מזוהה. פתח את המיקום ובדוק מה זה לפני מחיקה."
+                en += E.DOWNLOADS_NOTE
+            return safety, _both(base_he + text, base_en + en)
+    if in_appdata:
+        return "caution", _both(base_he + "לא למחוק בלי לדעת לאיזו תוכנה הוא שייך. אם התוכנה לא בשימוש, "
+                                "הסר אותה במקום למחוק קבצים.", base_en + E.APPDATA_UNKNOWN)
+    return "caution", _both("קובץ לא מזוהה. פתח את המיקום ובדוק מה זה לפני מחיקה.", E.UNKNOWN_FILE)
 
 
-def folder_hint(path):
+def downloads_dir_hint():
+    return _both("תיקייה בתוך ההורדות. בדוק את התוכן לפני מחיקה.", rules_en.DOWNLOADS_DIR)
+
+
+def folder_hint(path, lang="he"):
     """הסבר קצר לתיקיות מוכרות בעץ הגדלים."""
+    E = rules_en.FOLDER_HINTS
     low = path.lower().rstrip("\\")
     name = os.path.basename(low)
     table = {
-        WIN.lower(): "מערכת ההפעלה. לא לגעת.",
-        J(SYS, "program files").lower(): "תוכנות מותקנות. להסרה: הגדרות > אפליקציות.",
-        J(SYS, "program files (x86)").lower(): "תוכנות מותקנות (32 ביט). להסרה: הגדרות > אפליקציות.",
-        PD.lower(): "נתונים משותפים של תוכנות. לא למחוק ידנית.",
-        J(SYS, "users").lower(): "תיקיות המשתמשים: מסמכים, הורדות, שולחן עבודה והגדרות תוכנות.",
-        J(SYS, "$recycle.bin").lower(): "סל המחזור. אפשר לרוקן בלשונית \"מה אפשר למחוק\".",
-        J(SYS, "system volume information").lower(): "נקודות שחזור. מנהלים דרך הגדרות הגנת מערכת.",
-        J(SYS, "xboxgames").lower(): "משחקי Xbox. להסרת משחק: הגדרות > אפליקציות או אפליקציית Xbox.",
-        HOME.lower(): "תיקיית המשתמש שלך.",
-        J(HOME, "appdata").lower(): "הגדרות ומטמונים של תוכנות. כאן יושבים רוב המטמונים שהכלי יודע לנקות.",
-        J(HOME, "downloads").lower(): "הורדות. בדרך כלל יש כאן הרבה קבצים שאפשר למחוק.",
-        J(HOME, "onedrive").lower(): "קבצים שמסונכרנים ל-OneDrive. אפשר לפנות מקום עם \"פנה שטח\" בלחיצה ימנית (הקבצים יישארו בענן).",
+        WIN.lower(): ("מערכת ההפעלה. לא לגעת.", E["windows"]),
+        J(SYS, "program files").lower(): ("תוכנות מותקנות. להסרה: הגדרות > אפליקציות.", E["program files"]),
+        J(SYS, "program files (x86)").lower(): ("תוכנות מותקנות (32 ביט). להסרה: הגדרות > אפליקציות.", E["program files (x86)"]),
+        PD.lower(): ("נתונים משותפים של תוכנות. לא למחוק ידנית.", E["programdata"]),
+        J(SYS, "users").lower(): ("תיקיות המשתמשים: מסמכים, הורדות, שולחן עבודה והגדרות תוכנות.", E["users"]),
+        J(SYS, "$recycle.bin").lower(): ("סל המחזור. אפשר לרוקן בלשונית \"מה אפשר למחוק\".", E["$recycle.bin"]),
+        J(SYS, "system volume information").lower(): ("נקודות שחזור. מנהלים דרך הגדרות הגנת מערכת.", E["system volume information"]),
+        J(SYS, "xboxgames").lower(): ("משחקי Xbox. להסרת משחק: הגדרות > אפליקציות או אפליקציית Xbox.", E["xboxgames"]),
+        HOME.lower(): ("תיקיית המשתמש שלך.", E["home"]),
+        J(HOME, "appdata").lower(): ("הגדרות ומטמונים של תוכנות. כאן יושבים רוב המטמונים שהכלי יודע לנקות.", E["appdata"]),
+        J(HOME, "downloads").lower(): ("הורדות. בדרך כלל יש כאן הרבה קבצים שאפשר למחוק.", E["downloads"]),
+        J(HOME, "onedrive").lower(): ("קבצים שמסונכרנים ל-OneDrive. אפשר לפנות מקום עם \"פנה שטח\" בלחיצה ימנית "
+                                      "(הקבצים יישארו בענן).", E["onedrive"]),
     }
+    pick = (lambda pair: pair[0] if lang == "he" else pair[1])
     if low in table:
-        return table[low]
+        return pick(table[low])
     if name == "node_modules":
-        return "חבילות של פרויקט Node.js. אפשר למחוק ולשחזר עם npm install."
-    if name in (".gradle",):
-        return "מטמון בנייה של Android."
+        return pick(("חבילות של פרויקט Node.js. אפשר למחוק ולשחזר עם npm install.", E["node_modules"]))
+    if name == ".gradle":
+        return pick(("מטמון בנייה של Android.", E[".gradle"]))
     if name in ("build", "dist", ".next", "out", "target", ".cxx"):
-        return "תוצרי בנייה של פרויקט קוד. בדרך כלל אפשר למחוק ולבנות מחדש."
+        return pick(("תוצרי בנייה של פרויקט קוד. בדרך כלל אפשר למחוק ולבנות מחדש.", E["build"]))
     for r in RULES:
         for p in r.get("paths", []):
             if "*" not in p and p.lower().rstrip("\\") == low:
-                return r["title"] + ": " + SAFETY_LABELS[r["safety"]] + ". פרטים בלשונית \"מה אפשר למחוק\"."
+                t = rule_text(r)[lang]
+                if lang == "he":
+                    return t["title"] + ": " + t["safety_label"] + ". פרטים בלשונית \"מה אפשר למחוק\"."
+                return E["rule"].format(title=t["title"], safety=t["safety_label"])
     return ""
+
