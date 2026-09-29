@@ -107,6 +107,11 @@ const STR = {
     copied: "הטקסט הועתק. הדבק אותו בפוסט.", imgSaved: "התמונה נשמרה בתיקיית ההורדות.",
     shareText: "ניקיתי {size} מהמחשב עם רופא המחשב, כלי חינמי בקוד פתוח שמסביר כל פעולה לפני שהוא מבצע אותה.{free}{mem}\n{url}",
     shareTextFree: " המקום הפנוי בדיסק עלה מ-{a} ל-{b}.", shareTextMem: " הזיכרון בשימוש ירד מ-{a}% ל-{b}%.",
+    // about
+    about: "אודות", aboutTitle: "אודות רופא המחשב",
+    aboutText: "כלי חינמי בקוד פתוח ל-Windows, שמסביר למה המחשב איטי ומה אפשר למחוק בבטחה, ומסביר כל פעולה לפני שהוא מבצע אותה.",
+    aboutBy: "נוצר על ידי", aboutAuthor: "עוז לוי", aboutLinkedIn: "הפרופיל שלי בלינקדאין", aboutRepo: "קוד המקור ב-GitHub",
+    aboutReleases: "גרסאות והורדות", aboutVersion: "גרסה {v}", aboutPrivacy: "התוכנה רצה רק על המחשב שלך ולא שולחת שום מידע.",
     // admin
     runAdmin: "הפעל כמנהל", cfAdminTitle: "להפעיל מחדש כמנהל?",
     cfAdmin: "התוכנה תיסגר ותיפתח מחדש עם הרשאות מנהל. Windows ישאל אם לאשר.\n\nעם הרשאות מנהל אפשר לנקות גם תיקיות מערכת (עדכונים ישנים, קבצים זמניים של Windows) ולבטל הפעלה אוטומטית של תוכנות שמותקנות לכל המשתמשים.\n\nתוצאות הסריקה הנוכחית לא יישמרו, ותצטרך לסרוק שוב.",
@@ -205,6 +210,11 @@ const STR = {
     copied: "Text copied. Paste it into your post.", imgSaved: "The image was saved to your Downloads folder.",
     shareText: "I cleaned up {size} on my PC with PC Doctor, a free open-source tool that explains every action before it runs.{free}{mem}\n{url}",
     shareTextFree: " Free disk space went from {a} to {b}.", shareTextMem: " Memory in use dropped from {a}% to {b}%.",
+    // about
+    about: "About", aboutTitle: "About PC Doctor",
+    aboutText: "A free, open-source Windows tool that explains why your PC is slow and what you can safely delete, and explains every action before it runs.",
+    aboutBy: "Created by", aboutAuthor: "Oz Levi", aboutLinkedIn: "My LinkedIn profile", aboutRepo: "Source code on GitHub",
+    aboutReleases: "Releases and downloads", aboutVersion: "Version {v}", aboutPrivacy: "The program runs only on your computer and sends no data.",
     // admin
     runAdmin: "Run as administrator", cfAdminTitle: "Restart as administrator?",
     cfAdmin: "The program will close and reopen with administrator rights. Windows will ask you to approve.\n\nWith administrator rights you can also clean system folders (old updates, Windows temp files) and stop programs installed for all users from starting automatically.\n\nThe current scan results are not kept, so you will need to scan again.",
@@ -377,6 +387,7 @@ async function refresh() {
   } else {
     showOnly("intro");
   }
+  if (HASH.get("about") && !refresh._about) { refresh._about = 1; showAbout(); }
 }
 function schedule(ms) { stopPoll(); pollTimer = setTimeout(refresh, ms); }
 function stopPoll() { clearTimeout(pollTimer); }
@@ -1018,6 +1029,30 @@ function bindShare() {
     api("/api/open_share", { site: b.dataset.share }).then(() => toast(L("copied"), 6000)).catch((e) => toast(e.message));
   }));
 }
+
+// ================================================================= about
+function showAbout() {
+  const v = (STATE && STATE.version) || "";
+  const link = (site, label) => `<button class="link-btn" data-link="${site}">${esc(label)}</button>`;
+  const html = `
+    <div class="about-hero">
+      <div class="logo big-logo" aria-hidden="true"><svg viewBox="0 0 24 24" width="30" height="30"><path fill="currentColor" d="M3 4h18v12H3zM1 18h22v2H1z" opacity=".25"/><path fill="none" stroke="currentColor" stroke-width="2" d="M5 11h3l2-4 3 7 2-3h4"/></svg></div>
+      <div><div class="about-name">${esc(L("appName"))}</div><div class="small muted">${esc(L("aboutVersion", { v }))}</div></div>
+    </div>
+    <p>${esc(L("aboutText"))}</p>
+    <div class="info-sec"><h4>${esc(L("aboutBy"))}</h4>
+      <p class="about-author">${esc(L("aboutAuthor"))}</p>
+      ${link("author", L("aboutLinkedIn"))}
+    </div>
+    <div class="info-sec"><h4>GitHub</h4>
+      ${link("repo", L("aboutRepo"))}<br>${link("releases", L("aboutReleases"))}
+    </div>
+    <p class="small muted">${esc(L("aboutPrivacy"))}</p>`;
+  openInfo(L("aboutTitle"), html, "", null);
+  document.querySelectorAll("#iBody [data-link]").forEach((b) => (b.onclick = () =>
+    api("/api/open_link", { site: b.dataset.link }).catch((e) => toast(e.message))));
+}
+$("#aboutBtn").addEventListener("click", showAbout);
 
 // =============================================================== buttons
 $("#adminBtn").addEventListener("click", async () => {

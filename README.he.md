@@ -95,6 +95,12 @@
 **אפשר להוסיף עוד תיקיות לניקוי?**
 כן. כל מיקום הוא רשומה אחת ברשימה `RULES` בקובץ [app/rules.py](app/rules.py), והטקסט באנגלית שלו נמצא בקובץ [app/rules_en.py](app/rules_en.py).
 
+## נוצר על ידי
+
+**עוז לוי** · [לינקדאין](https://www.linkedin.com/in/ozlevi1/)
+
+שאלות, רעיונות ודיווח על באגים אפשר לפתוח ב-[Issues](https://github.com/ozlevi29/Analyzing-files-on-the-computer/issues).
+
 ## מבנה הקוד
 
 | קובץ | תפקיד |
@@ -107,7 +113,7 @@
 | `app/report.py` | בניית הדוח "למה המחשב איטי" וצעדי הטיפול, בשתי השפות. |
 | `app/main.py` | השרת המקומי שמחבר בין הממשק לפעולות. |
 | `app/static/` | הממשק (HTML, CSS, JavaScript). |
-| `tools/build_exe.py` | בונה את `dist/PCDoctor.exe`. |
+| `tools/build_exe.py` | בונה את `dist/<version>/PCDoctor.exe`. |
 | `winget/` | קובצי ההגדרה ל-winget, מנהל ההתקנות של Windows. |
 
 השרת המקומי מאזין רק לכתובת `127.0.0.1` ודורש מפתח אקראי שנוצר בכל הפעלה. פעולות מחיקה מתקבלות רק על נתיבים וצעדים שהסריקה עצמה הציעה.

@@ -95,6 +95,12 @@ Programs packed into a single exe with PyInstaller are sometimes flagged by mist
 **Can I add more folders to clean?**
 Yes. Each location is one entry in the `RULES` list in [app/rules.py](app/rules.py), with its English text in [app/rules_en.py](app/rules_en.py).
 
+## Created by
+
+**Oz Levi** · [LinkedIn](https://www.linkedin.com/in/ozlevi1/)
+
+Questions, ideas and bug reports are welcome in [Issues](https://github.com/ozlevi29/Analyzing-files-on-the-computer/issues).
+
 ## Project structure
 
 | File | Purpose |
@@ -107,7 +113,7 @@ Yes. Each location is one entry in the `RULES` list in [app/rules.py](app/rules.
 | `app/report.py` | Builds the "Why is my PC slow" report and its steps, in both languages. |
 | `app/main.py` | The local server that connects the interface to the actions. |
 | `app/static/` | The interface (HTML, CSS, JavaScript). |
-| `tools/build_exe.py` | Builds `dist/PCDoctor.exe`. |
+| `tools/build_exe.py` | Builds `dist/<version>/PCDoctor.exe`. |
 | `winget/` | The manifest for Windows Package Manager (winget). |
 
 The local server listens only on `127.0.0.1` and requires a random key that is created on every start. Delete actions accept only paths and steps that the scan itself produced.

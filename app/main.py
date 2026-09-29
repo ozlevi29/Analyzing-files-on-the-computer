@@ -44,9 +44,14 @@ STATIC = os.path.join(HERE, "static")
 TOKEN = secrets.token_urlsafe(24)
 SYSDRIVE = os.environ.get("SystemDrive", "C:") + "\\"
 REPO_URL = "https://github.com/ozlevi29/Analyzing-files-on-the-computer"
-SHARE_URLS = {
+AUTHOR_LINKEDIN = "https://www.linkedin.com/in/ozlevi1/"
+# The only external addresses the program ever opens (in the user's regular browser).
+LINKS = {
     "linkedin": "https://www.linkedin.com/sharing/share-offsite/?url=" + REPO_URL,
     "facebook": "https://www.facebook.com/sharer/sharer.php?u=" + REPO_URL,
+    "author": AUTHOR_LINKEDIN,
+    "repo": REPO_URL,
+    "releases": REPO_URL + "/releases",
 }
 
 MSG = {
@@ -408,9 +413,9 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/open_recycle_bin":
             os.startfile("shell:RecycleBinFolder")
             return dict(ok=True)
-        if path == "/api/open_share":
-            # Opens a share page in the user's regular browser (where they are signed in). Fixed URLs only.
-            url = SHARE_URLS.get(body.get("site"))
+        if path in ("/api/open_share", "/api/open_link"):
+            # Opens a page in the user's regular browser (where they are signed in). Fixed URLs only.
+            url = LINKS.get(body.get("site"))
             if not url:
                 raise ValueError("unknown site")
             os.startfile(url)

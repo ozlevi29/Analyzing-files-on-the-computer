@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Builds dist/PCDoctor.exe: a single file that runs without Python installed.
+Builds dist/<version>/PCDoctor.exe: a single file that runs without Python installed.
+Each version gets its own folder, so a copy that is currently running never blocks a new build.
 
     python -m pip install pyinstaller pillow
     python tools/build_exe.py
 
-Also writes dist/PCDoctor.exe.sha256 (needed for the winget manifest and for users who
+Also writes PCDoctor.exe.sha256 next to it (needed for the winget manifest and for users who
 want to verify the download).
 """
 
@@ -54,6 +55,7 @@ def version_file(ver):
 
 def main():
     ver = version()
+    out = os.path.join(DIST, ver)
     icon = os.path.join(ROOT, "assets", "icon.ico")
     if not os.path.exists(icon):
         subprocess.check_call([sys.executable, os.path.join(ROOT, "tools", "make_icon.py")])
@@ -66,12 +68,12 @@ def main():
         "--version-file", version_file(ver),
         "--add-data", os.path.join(APP, "static") + os.pathsep + "static",
         "--paths", APP,
-        "--distpath", DIST, "--workpath", WORK, "--specpath", WORK,
+        "--distpath", out, "--workpath", WORK, "--specpath", WORK,
         os.path.join(APP, "main.py"),
     ]
     print(" ".join(cmd))
     subprocess.check_call(cmd, cwd=ROOT)
-    exe = os.path.join(DIST, "PCDoctor.exe")
+    exe = os.path.join(out, "PCDoctor.exe")
     digest = hashlib.sha256(open(exe, "rb").read()).hexdigest().upper()
     with open(exe + ".sha256", "w") as f:
         f.write(f"{digest}  PCDoctor.exe\n")
