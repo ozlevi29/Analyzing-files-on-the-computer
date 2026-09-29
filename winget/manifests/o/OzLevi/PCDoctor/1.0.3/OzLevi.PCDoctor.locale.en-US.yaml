@@ -6,8 +6,8 @@ Publisher: Oz Levi
 PublisherUrl: https://github.com/ozlevi29
 PackageName: PC Doctor
 PackageUrl: https://github.com/ozlevi29/Analyzing-files-on-the-computer
-# TODO before submitting to winget: add a LICENSE file to the repository and put its name here (for example MIT).
-License: TODO
+License: MIT
+LicenseUrl: https://github.com/ozlevi29/Analyzing-files-on-the-computer/blob/main/LICENSE
 ShortDescription: Explains why your PC is slow and what you can safely delete, before every action.
 Description: >-
   PC Doctor scans Windows for the causes of slowness (full disk, memory, startup programs, extra antivirus, power settings,

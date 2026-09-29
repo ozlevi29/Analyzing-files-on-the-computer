@@ -101,6 +101,10 @@ Yes. Each location is one entry in the `RULES` list in [app/rules.py](app/rules.
 
 Questions, ideas and bug reports are welcome in [Issues](https://github.com/ozlevi29/Analyzing-files-on-the-computer/issues).
 
+## License
+
+[MIT](LICENSE). Free to use, change and share, as long as the copyright notice stays.
+
 ## Project structure
 
 | File | Purpose |
