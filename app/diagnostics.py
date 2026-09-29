@@ -52,8 +52,8 @@ def _ps_json(script, timeout=40):
 
 
 def gb(n):
-    # ⁦...⁩ מבודדים את הכיוון, כדי שבטקסט עברי יוצג "12.7 GB" ולא "GB 12.7"
-    return f"⁦{n / GB:.1f} GB⁩" if n is not None else "?"
+    # LRI ... PDI מבודדים את הכיוון, כדי שבטקסט עברי יוצג "12.7 GB" ולא "GB 12.7"
+    return chr(0x2066) + f"{n / GB:.1f} GB" + chr(0x2069) if n is not None else "?"
 
 
 # ------------------------------------------------------------------ probes
@@ -311,14 +311,15 @@ def build_report(diag, rule_items, disk):
                 "הפריטים הבאים יימחקו לצמיתות (לא דרך סל המחזור):\n" + lines +
                 "\n\nשום קובץ אישי, סיסמה, היסטוריה או פרויקט לא נמחק. קבצים שנמצאים כרגע בשימוש ידולגו. "
                 "מומלץ לסגור קודם את Chrome, CapCut ו-VS Code כדי שיימחק כמה שיותר.",
-                dict(type="clean_rules", rules=[r["id"] for r in runnable]), size=total))
+                dict(type="clean_rules", rules=[r["id"] for r in runnable]), size=total,
+                info_rules=[r["id"] for r in runnable]))
         rb = by_id.get("recycle_bin")
         if rb and (rb["size"] or 0) > 100 * 1024 ** 2:
             steps.append(step("empty_recycle", f"ריקון סל המחזור ({gb(rb['size'])})",
                               "קבצים שמחקת עדיין תופסים מקום עד שהסל מתרוקן.",
                               f"כל {rb.get('count', 0)} הפריטים בסל המחזור יימחקו לצמיתות ולא יהיה אפשר לשחזר אותם. "
                               "אם אתה לא בטוח, פתח קודם את סל המחזור ובדוק.",
-                              dict(type="empty_recycle"), size=rb["size"]))
+                              dict(type="empty_recycle"), size=rb["size"], info_rules=["recycle_bin"]))
         hib = by_id.get("hiberfil")
         if hib and (hib["size"] or 0) > GB:
             steps.append(step("hibernate_off", f"כיבוי קובץ השינה ({gb(hib['size'])})",
@@ -327,7 +328,8 @@ def build_report(diag, rule_items, disk):
                               "מה ישתנה: אפשרות \"מצב שינה עמוקה\" תיעלם, וההדלקה מכבוי מלא תהיה איטית בכמה שניות. "
                               "מצב שינה רגיל (סגירת מכסה) ממשיך לעבוד כרגיל.\n"
                               "להחזרה בכל רגע: powercfg /h on בחלון מנהל.",
-                              dict(type="command", command="powercfg /h off", admin=True), size=hib["size"]))
+                              dict(type="command", command="powercfg /h off", admin=True), size=hib["size"],
+                              info_rules=["hiberfil"]))
         # פריטים גדולים שלא נכללים בניקוי הבטוח: דורשים פקודה, או שיש להם מחיר קטן
         for rid in ("pnpm_store", "gradle_cache", "automation_browsers", "chrome_ai_model", "android_studio_old",
                     "browser_sw"):
@@ -336,22 +338,40 @@ def build_report(diag, rule_items, disk):
                 if r["action"] == "command":
                     steps.append(step("rule_" + rid, f"{r['title']} ({gb(r['size'])})", r["what"],
                                       r["if_deleted"] + "\n\nייפתח חלון פקודה שיריץ: " + r["command"],
-                                      dict(type="command", command=r["command"], admin=r["admin"]), size=r["size"]))
+                                      dict(type="command", command=r["command"], admin=r["admin"]), size=r["size"],
+                                      info_rules=[rid]))
                 else:
                     steps.append(step("rule_" + rid, f"{r['title']} ({gb(r['size'])})", r["what"],
                                       "מה יימחק:\n" + "\n".join("• " + p for p in r["paths"][:12]) +
                                       "\n\nמה המשמעות: " + r["if_deleted"],
-                                      dict(type="clean_rules", rules=[rid]), size=r["size"]))
+                                      dict(type="clean_rules", rules=[rid]), size=r["size"], info_rules=[rid]))
         if disk and disk.get("node_modules"):
             nm_total = sum(x["size"] for x in disk["node_modules"])
             if nm_total > GB:
                 steps.append(step("goto_nm", f"תיקיות node_modules בפרויקטים ({gb(nm_total)})",
                                   f"נמצאו {len(disk['node_modules'])} תיקיות node_modules. בפרויקטים שאתה לא עובד עליהם אפשר למחוק ולשחזר עם npm install.",
-                                  "", dict(type="goto", tab="disk", anchor="nm"), button="הצג רשימה"))
+                                  "", dict(type="goto", tab="disk", anchor="nm"), button="הצג רשימה",
+                                  info=dict(
+                                      verdict="הכפתור רק מציג רשימה. כל מחיקה שם היא לפרויקט אחד, ורק אחרי אישור.",
+                                      details="כל פרויקט JavaScript (React, Node, Next.js וכו') מוריד את החבילות שהוא צריך לתיקייה בשם node_modules "
+                                              "בתוך הפרויקט. התיקייה הזו לא מכילה קוד שכתבת, רק עותקים של חבילות מהאינטרנט. "
+                                              "הרשימה שבקובץ package.json בפרויקט מאפשרת להוריד את כולן מחדש בפקודה אחת.",
+                                      not_affected=["הקוד שכתבת: קבצי המקור, package.json, הגדרות הפרויקט", "Git וההיסטוריה של הפרויקט",
+                                                    "פרויקטים אחרים"],
+                                      after=["הפרויקט לא ירוץ עד שתריץ בתיקייה שלו npm install (או pnpm install / yarn). זה לוקח דקה-שתיים ודורש אינטרנט.",
+                                             "לכן כדאי למחוק רק בפרויקטים ישנים שאתה לא עובד עליהם עכשיו."],
+                                      undo="npm install בתיקיית הפרויקט.")))
         if disk and disk.get("large_files"):
             steps.append(step("goto_large", "קבצים גדולים לבדיקה ידנית",
                               "רשימת הקבצים הגדולים בכונן, עם הסבר לכל אחד אם אפשר למחוק.",
-                              "", dict(type="goto", tab="disk", anchor="large"), button="הצג רשימה"))
+                              "", dict(type="goto", tab="disk", anchor="large"), button="הצג רשימה",
+                              info=dict(
+                                  verdict="הכפתור רק מציג רשימה. הכלי לא מוחק שם שום דבר לבד.",
+                                  details="אלה כל הקבצים בכונן שגדולים מ-500 MB. ליד כל קובץ יש הסבר מה הוא לפי הסוג והמיקום שלו "
+                                          "(למשל: קובץ התקנה, סרטון, גיבוי דחוס, קובץ מערכת). על קבצי מערכת אין בכלל כפתור מחיקה.",
+                                  not_affected=["שום דבר, עד שתבחר קובץ ותאשר"],
+                                  after=["קובץ שתבחר עובר לסל המחזור. אפשר לשחזר אותו משם עד שתרוקן את הסל."],
+                                  undo="פתח את סל המחזור, לחיצה ימנית על הקובץ > \"שחזר\".")))
         wx = by_id.get("winsxs")
         if wx:
             steps.append(step("dism", "ניקוי רכיבי עדכון ישנים של Windows",
@@ -359,8 +379,9 @@ def build_report(diag, rule_items, disk):
                               "ייפתח חלון של Windows שיבקש הרשאות מנהל, ויריץ:\n"
                               "Dism.exe /Online /Cleanup-Image /StartComponentCleanup\n\n"
                               "זה לוקח 5 עד 20 דקות. אל תסגור את החלון ואל תכבה את המחשב באמצע. "
-                              "אחרי זה לא יהיה אפשר להסיר עדכונים ישנים של Windows (זה בסדר, כמעט אף פעם לא צריך).",
-                              dict(type="command", command="Dism.exe /Online /Cleanup-Image /StartComponentCleanup", admin=True)))
+                              "נמחקות רק גרסאות של רכיבי מערכת שהוחלפו לפני יותר מחודש. העדכונים המותקנים ו-Windows עצמו לא נפגעים.",
+                              dict(type="command", command="Dism.exe /Online /Cleanup-Image /StartComponentCleanup", admin=True),
+                              info_rules=["winsxs"]))
         if free_pct < 10:
             sev, head = "high", f"הכונן {sysdrive} כמעט מלא: נשארו רק {gb(d['free'])} פנויים ({free_pct:.0f}%)"
         elif free_pct < 20:
@@ -387,12 +408,30 @@ def build_report(diag, rule_items, disk):
                            "חיסכון בזיכרון מקפיא לשוניות שלא השתמשת בהן זמן מה, ומשחרר את הזיכרון שלהן.",
                            "ייפתח Chrome בדף ההגדרות \"ביצועים\". שם הפעל את המתג \"חיסכון בזיכרון\" (Memory Saver).\n\n"
                            "מה ישתנה: לשוניות ישנות ייטענו מחדש כשתחזור אליהן. לשונית שמנגנת מוזיקה או סרטון לא מוקפאת.",
-                           dict(type="open_chrome", url="chrome://settings/performance")))
+                           dict(type="open_chrome", url="chrome://settings/performance"),
+                           info=dict(
+                               verdict="לא יהרוס כלום. זו הגדרה רשמית של Chrome שאפשר לכבות בכל רגע.",
+                               details="כל לשונית פתוחה ב-Chrome תופסת זיכרון, גם אם לא הסתכלת עליה שעות. \"חיסכון בזיכרון\" "
+                                       "(Memory Saver) מקפיא לשוניות שלא השתמשת בהן זמן מה, ומשחרר את הזיכרון שלהן ל-Windows. "
+                                       "הלשונית נשארת במקומה עם הכותרת שלה. כשתלחץ עליה, היא נטענת מחדש. הכלי רק פותח את דף ההגדרות, "
+                                       "ואתה מפעיל את המתג בעצמך.",
+                               not_affected=["הלשוניות עצמן: אף לשונית לא נסגרת", "סיסמאות, סימניות, היסטוריה והתחברויות",
+                                             "לשונית שמנגנת מוזיקה או סרטון, או שיש בה שיחת וידאו פעילה (לא מוקפאות)"],
+                               after=["כשתחזור ללשונית ישנה, היא תיטען מחדש (שנייה-שתיים).",
+                                      "טקסט שהקלדת בטופס בלשונית שהוקפאה עלול להימחק. אפשר להוסיף אתרים לרשימת \"תמיד להשאיר פעיל\" באותו מסך."],
+                               undo="באותו דף הגדרות: לכבות את המתג \"חיסכון בזיכרון\".")))
     msteps.append(step("taskmgr", "סגירת תוכנות שלא בשימוש",
                        "במנהל המשימות, מיין לפי \"זיכרון\" וסגור תוכנות פתוחות שאתה לא צריך עכשיו.",
                        "ייפתח מנהל המשימות. הכלי לא סוגר שום תוכנה בעצמו: אתה מחליט מה לסגור. "
                        "שמור עבודה פתוחה לפני שאתה סוגר תוכנה.",
-                       dict(type="open", target="taskmgr"), button="פתח"))
+                       dict(type="open", target="taskmgr"), button="פתח",
+                       info=dict(
+                           verdict="הכלי לא סוגר כלום. רק פותח את מנהל המשימות.",
+                           details="מנהל המשימות מראה כל תוכנה פתוחה וכמה זיכרון היא תופסת. לחיצה על הכותרת \"זיכרון\" ממיינת מהגדולה לקטנה. "
+                                   "כדי לסגור תוכנה: לחיצה ימנית > \"סיים משימה\". עדיף לסגור תוכנה בדרך הרגילה (האיקס בחלון), כדי שתשמור את העבודה.",
+                           not_affected=["שום דבר לא משתנה עד שאתה בוחר לסגור משהו"],
+                           after=["תוכנה שתסגור דרך \"סיים משימה\" לא תשמור עבודה פתוחה."],
+                           undo="פשוט לפתוח את התוכנה שוב.")))
     load = mem["load"]
     findings.append(dict(
         id="memory", severity="high" if load >= 85 else "medium" if load >= 70 else "ok",
@@ -415,7 +454,21 @@ def build_report(diag, rule_items, disk):
                            "התוכנה עצמה לא נמחקת ותמשיך לעבוד כרגיל כשתפתח אותה. "
                            "זו בדיוק אותה פעולה כמו \"השבת\" במנהל המשימות > אפליקציות הפעלה, ואפשר להפעיל מחדש משם בכל רגע.",
                            dict(type="disable_startup", hive=s["hive"], sub=s["sub"], name=s["name"]),
-                           disabled_reason="דורש הפעלת הכלי כמנהל" if admin_needed else ""))
+                           disabled_reason="דורש הפעלת הכלי כמנהל" if admin_needed else "",
+                           info=dict(
+                               verdict=f"לא יהרוס כלום. {s['display']} נשאר מותקן ועובד, רק לא נפתח לבד.",
+                               details=s["advice"] + " "
+                                       "כשהמחשב נדלק, Windows מפעיל אוטומטית רשימה של תוכנות. הפעולה הזו מסמנת את התוכנה כ\"מושבתת\" "
+                                       "ברשימה, בדיוק כמו הכפתור \"השבת\" במנהל המשימות. לא נמחק שום קובץ.",
+                               where=[s["command"], ("HKEY_CURRENT_USER" if s["hive"] == "HKCU" else "HKEY_LOCAL_MACHINE")
+                                      + "\\" + APPROVED + "\\" + s["sub"] + " > " + s["name"]],
+                               not_affected=[f"התוכנה {s['display']} עצמה, ההגדרות והחשבון שלה",
+                                             "האפשרות לפתוח אותה ידנית מתפריט התחל או מקיצור הדרך",
+                                             "כל שאר התוכנות"],
+                               after=[f"{s['display']} לא ייפתח אוטומטית בהדלקה הבאה. תפתח אותו כשתצטרך.",
+                                      "התראות מהתוכנה (אם יש) יופיעו רק אחרי שתפתח אותה.",
+                                      "ההשפעה מורגשת מההדלקה הבאה של המחשב."],
+                               undo="מנהל המשימות (Ctrl+Shift+Esc) > אפליקציות הפעלה > לחיצה ימנית על התוכנה > \"הפעל\".")))
     findings.append(dict(
         id="startup", severity="medium" if len(rec) >= 3 else "low" if rec else "ok",
         title=f"{len(enabled)} תוכנות נפתחות אוטומטית עם הדלקת המחשב",
@@ -439,7 +492,16 @@ def build_report(diag, rule_items, disk):
                         f"ייפתח מסך \"אפליקציות מותקנות\" של Windows. חפש שם {names}, לחץ על שלוש הנקודות ואז \"הסר התקנה\".\n\n"
                         "מה יקרה: Windows Defender יופעל מחדש אוטומטית תוך כמה דקות. "
                         "אם שילמת על מנוי, בדוק קודם שאינך מוותר על משהו שאתה צריך.",
-                        dict(type="open", target="ms-settings:appsfeatures"), button="פתח")]))
+                        dict(type="open", target="ms-settings:appsfeatures"), button="פתח",
+                        info=dict(
+                            verdict="הכלי לא מסיר כלום. הוא רק פותח את מסך האפליקציות, וההחלטה שלך.",
+                            details="כשמותקן אנטי-וירוס נוסף, Windows Defender עובר למצב המתנה, ו-" + names + " סורק כל קובץ. "
+                                    "Defender מובנה ב-Windows, חינמי, ומקבל ציונים גבוהים במבחנים עצמאיים. "
+                                    "כשמסירים את " + names + ", Windows מזהה שאין הגנה אחרת ומפעיל את Defender אוטומטית.",
+                            not_affected=[rules.PERSONAL, "ההגנה על המחשב: Defender נדלק במקום", "שאר התוכנות"],
+                            after=["תוכנות נוספות של " + names + " (VPN, ניקוי, מנהל סיסמאות) יוסרו אם הן חלק מאותה התקנה.",
+                                   "אם יש לך מנוי בתשלום, הוא לא מתבטל אוטומטית."],
+                            undo="אפשר להוריד ולהתקין שוב מהאתר של " + names + "."))]))
 
     # ---------- disk health
     bad = [x for x in diag["disks"] if x.get("health") and x["health"] != "Healthy"]
@@ -477,7 +539,13 @@ def build_report(diag, rule_items, disk):
             steps=[step("restart", "הפעלה מחדש של המחשב", "הפעלה מחדש בעוד דקה.",
                         "המחשב יופעל מחדש בעוד 60 שניות.\n\nשמור את כל העבודה הפתוחה לפני שאתה ממשיך! "
                         "כל התוכנות ייסגרו. לביטול, בתוך הדקה: פתח חלון פקודה והקלד shutdown /a",
-                        dict(type="restart"))]))
+                        dict(type="restart"),
+                        info=dict(
+                            verdict="לא יהרוס כלום, בתנאי ששמרת את העבודה הפתוחה.",
+                            details="הפעלה מחדש סוגרת את כל התוכנות, מנקה את הזיכרון לגמרי ומסיימת התקנה של עדכונים שממתינים.",
+                            not_affected=["קבצים שמורים", "תוכנות מותקנות והגדרות"],
+                            after=["כל התוכנות ייסגרו. מסמך שלא נשמר עלול ללכת לאיבוד."],
+                            undo="לביטול בתוך הדקה: Win+R > shutdown /a > Enter."))]))
 
     # ---------- network / YouTube
     net = diag["network"]
@@ -504,12 +572,26 @@ def build_report(diag, rule_items, disk):
                  "בלי האצת חומרה, המעבד מפענח את הווידאו לבד ותמונות נופלות.",
                  "ייפתח Chrome בדף ההגדרות \"מערכת\". ודא שהמתג \"שימוש בהאצת גרפיקה כשהיא זמינה\" מופעל. "
                  "אם שינית אותו, לחץ \"הפעלה מחדש\" של Chrome.",
-                 dict(type="open_chrome", url="chrome://settings/system"), button="פתח"),
+                 dict(type="open_chrome", url="chrome://settings/system"), button="פתח",
+                 info=dict(verdict="הכלי רק פותח את דף ההגדרות.",
+                           details="\"האצת גרפיקה\" נותנת לכרטיס המסך לפענח את הווידאו. בלעדיה, המעבד עושה את כל העבודה לבד, "
+                                   "וביוטיוב באיכות גבוהה זה גורם לתמונה לקפוא לרגעים. בדרך כלל ההגדרה פעילה, אבל לפעמים היא כבויה אחרי תקלה.",
+                           not_affected=["סיסמאות, סימניות, היסטוריה והתחברויות"],
+                           after=["אם תשנה את ההגדרה, Chrome יבקש להפעיל את עצמו מחדש. הלשוניות נפתחות שוב."],
+                           undo="להחזיר את המתג למצב הקודם.")),
             step("gpu_pref", "להריץ את Chrome על כרטיס המסך החזק (RTX)",
                  "במחשב שלך יש שני כרטיסי מסך. Windows לפעמים מריץ את הדפדפן על הכרטיס החלש של Intel.",
                  "ייפתח מסך \"גרפיקה\" של Windows. מצא את Google Chrome ברשימה (או הוסף אותו), לחץ עליו ובחר \"ביצועים גבוהים\". "
                  "אחרי זה סגור ופתח את Chrome. החיסרון: צריכת סוללה גבוהה יותר כשלא מחובר לחשמל.",
-                 dict(type="open", target="ms-settings:display-advancedgraphics"), button="פתח"),
+                 dict(type="open", target="ms-settings:display-advancedgraphics"), button="פתח",
+                 info=dict(verdict="הכלי רק פותח את מסך ההגדרות.",
+                           details="במחשב שלך יש כרטיס מסך חסכוני של Intel וכרטיס חזק של NVIDIA (RTX 3060). "
+                                   "Windows מחליט לבד איזה כרטיס כל תוכנה מקבלת, ולדפדפן הוא בדרך כלל נותן את החסכוני. "
+                                   "אפשר לקבוע ל-Chrome את הכרטיס החזק.",
+                           not_affected=["שאר התוכנות והמשחקים", "Chrome והנתונים שלו"],
+                           after=["צריכת סוללה גבוהה יותר כשהמחשב לא מחובר לחשמל.",
+                                  "צריך לסגור ולפתוח את Chrome כדי שזה ייכנס לתוקף."],
+                           undo="באותו מסך: לבחור ב-Chrome \"תן ל-Windows להחליט\".")),
         ]))
 
     order = {"high": 0, "medium": 1, "low": 2, "ok": 3}

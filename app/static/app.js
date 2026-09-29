@@ -14,8 +14,9 @@ function fmt(bytes) {
   const u = ["B", "KB", "MB", "GB", "TB"];
   let i = 0, n = bytes;
   while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
-  // ⁦...⁩ isolate direction so Hebrew text shows "12.7 GB", not "GB 12.7"
-  return "⁦" + (i >= 3 ? n.toFixed(1) : Math.round(n)) + " " + u[i] + "⁩";
+  // LRI ... PDI isolate direction so Hebrew text shows "12.7 GB", not "GB 12.7"
+  const LRI = String.fromCharCode(0x2066), PDI = String.fromCharCode(0x2069);
+  return LRI + (i >= 3 ? n.toFixed(1) : Math.round(n)) + " " + u[i] + PDI;
 }
 
 async function api(path, body) {
@@ -113,6 +114,8 @@ async function refresh() {
     renderAll();
     const tab = new URLSearchParams(location.hash.slice(1)).get("tab");
     if (tab) openTab(tab);
+    const info = new URLSearchParams(location.hash.slice(1)).get("info");
+    if (info) showStepInfo(info);
   } else if (s.status === "error") {
     stopPoll();
     showOnly("intro");
@@ -170,6 +173,108 @@ function renderReport() {
     ${f.map(renderFinding).join("")}`;
 
   $("#tab-report").querySelectorAll("[data-step]").forEach((b) => b.addEventListener("click", () => doStep(b.dataset.step)));
+  $("#tab-report").querySelectorAll("[data-info]").forEach((b) => b.addEventListener("click", () => showStepInfo(b.dataset.info)));
+}
+
+// ------------------------------------------------------- detailed info popup
+const li = (arr, cls) => arr && arr.length ? `<ul class="${cls}">${arr.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : "";
+const sec = (title, html) => html ? `<div class="info-sec"><h4>${esc(title)}</h4>${html}</div>` : "";
+const para = (t) => t ? `<p>${esc(t)}</p>` : "";
+
+function verdictBox(text, safety) {
+  if (!text) return "";
+  const warn = safety && safety !== "safe";
+  return `<div class="verdict ${warn ? "warn" : ""}"><b>זה יהרוס לי משהו?</b><span>${esc(text)}</span></div>`;
+}
+
+function howItRuns(r) {
+  if (r.action === "clean") {
+    let t = "הקבצים נמחקים לצמיתות, לא דרך סל המחזור, כי הם נבנים מחדש לבד. ";
+    t += "קבצים שתוכנה פתוחה משתמשת בהם כרגע ידולגו, בלי שום נזק לתוכנה.";
+    if (r.min_age_days) t += ` קבצים שנוצרו או שונו ב-${r.min_age_days === 1 ? "24 השעות" : r.min_age_days + " הימים"} האחרונים לא נמחקים.`;
+    return t;
+  }
+  if (r.action === "recycle") return "סל המחזור מתרוקן דרך הפונקציה הרשמית של Windows, בדיוק כמו לחיצה ימנית על הסל > \"רוקן את סל המחזור\".";
+  if (r.action === "command") return `ייפתח חלון פקודה${r.admin ? " (Windows יבקש אישור מנהל)" : ""} שיריץ את הפקודה הרשמית:\n${r.command}\nהכלי לא מוחק את הקבצים בעצמו: Windows או הכלי הרשמי עושים את זה.`;
+  if (r.action === "open") return "ייפתח מסך של Windows. שום דבר לא יימחק אוטומטית. אתה מבצע את הפעולה במסך שנפתח.";
+  return "";
+}
+
+function ruleInfoHtml(r) {
+  const d = r.details || {};
+  const paths = r.path_sizes && r.path_sizes.length
+    ? `<div class="path-wrap"><table class="path-tbl">${r.path_sizes.map((p) =>
+        `<tr><td class="mono">${esc(p.path)}</td><td class="num">${fmt(p.size)}</td></tr>`).join("")}</table></div>` : "";
+  return verdictBox(d.verdict, r.safety) +
+    sec("מה זה?", para(r.what) + (d.details ? `<p style="margin-top:6px">${esc(d.details)}</p>` : "")) +
+    sec(r.action === "command" || r.action === "open" ? "מה נמצא שם עכשיו" : "מה בדיוק יימחק, ומאיפה", paths) +
+    sec("איך זה מתבצע", `<div class="howbox" style="white-space:pre-wrap">${esc(howItRuns(r))}</div>`) +
+    sec("מה לא ייפגע", li(d.not_affected, "ok-list")) +
+    sec("מה כן ישתנה אחרי", li(d.after, "chg-list")) +
+    sec("ואם אתחרט?", para(d.undo));
+}
+
+function openInfo(title, bodyHtml, actLabel, onAct) {
+  $("#iTitle").textContent = title;
+  $("#iBody").innerHTML = bodyHtml;
+  $("#iBody").scrollTop = 0;
+  const modal = $("#info"), act = $("#iAct");
+  act.classList.toggle("hidden", !actLabel);
+  act.textContent = actLabel || "";
+  modal.classList.remove("hidden");
+  $("#iNo").focus();
+  const close = () => {
+    modal.classList.add("hidden");
+    act.onclick = $("#iNo").onclick = $("#iClose").onclick = modal.onclick = document.onkeydown = null;
+  };
+  act.onclick = () => { close(); onAct && onAct(); };
+  $("#iNo").onclick = $("#iClose").onclick = close;
+  modal.onclick = (e) => { if (e.target === modal) close(); };
+  document.onkeydown = (e) => { if (e.key === "Escape") close(); };
+}
+
+function showStepInfo(id) {
+  const s = findStep(id);
+  if (!s) return;
+  let html = "";
+  if (s.info_rules && s.info_rules.length) {
+    const rs = s.info_rules.map((rid) => STATE.results.rules.find((r) => r.id === rid)).filter(Boolean);
+    if (rs.length === 1) {
+      html = ruleInfoHtml(rs[0]);
+    } else {
+      const total = rs.reduce((a, r) => a + (r.size || 0), 0);
+      html = verdictBox("לא. כל הסוגים ברשימה הם קבצים זמניים, מטמונים וקבצי קריסה. אף אחד מהם לא מכיל מידע אישי, " +
+          "וכל תוכנה יוצרת מחדש את מה שהיא צריכה.", "safe") +
+        sec("מה הפעולה עושה", para(`הפעולה מנקה ${rs.length} סוגים של קבצי פסולת, בסך הכול ${fmt(total)}. ` +
+          "לחץ על כל סוג כדי לראות מה הוא, מאילו תיקיות בדיוק הוא נמחק, ומה לא ייפגע."))+
+        sec("מה לא ייפגע בשום מקרה", li([
+          "המסמכים, התמונות, הסרטונים וההורדות שלך",
+          "התוכנות המותקנות. כולן ממשיכות לעבוד",
+          "בדפדפנים: סיסמאות, סימניות, היסטוריה, התחברויות לאתרים ותוספים",
+          "פרויקטים וקוד (CapCut, Android, VS Code, Node)",
+          "Windows, עדכונים מותקנים והגדרות"], "ok-list")) +
+        sec("לפני שמתחילים", para("כדאי לסגור את Chrome, Edge, CapCut ו-VS Code. זה לא חובה, אבל כך יימחקו גם הקבצים שהם מחזיקים פתוחים עכשיו.")) +
+        rs.map((r) => `<details class="rule-sec"><summary><span>${esc(r.title)}</span>${badge(r.safety)}<span class="sz">${fmt(r.size)}</span></summary>
+          <div class="rule-sec-body">${ruleInfoHtml(r)}</div></details>`).join("");
+    }
+  } else if (s.info) {
+    const d = s.info;
+    html = verdictBox(d.verdict, "safe") +
+      sec("מה זה?", para(d.details)) +
+      sec("איפה זה מוגדר", d.where ? `<div class="path-wrap"><table class="path-tbl">${d.where.map((w) => `<tr><td class="mono">${esc(w)}</td></tr>`).join("")}</table></div>` : "") +
+      sec("מה לא ייפגע", li(d.not_affected, "ok-list")) +
+      sec("מה כן ישתנה אחרי", li(d.after, "chg-list")) +
+      sec("ואם אתחרט?", para(d.undo));
+  }
+  const canAct = !s.disabled_reason;
+  openInfo(s.title, html, canAct ? s.button : "", () => doStep(id));
+}
+
+function showRuleInfo(id) {
+  const r = STATE.results.rules.find((x) => x.id === id);
+  if (!r) return;
+  const act = ACTION_LABEL[r.action] && !r.needs_admin_now && !(r.action === "clean" && !r.size) ? ACTION_LABEL[r.action] : "";
+  openInfo(r.title, ruleInfoHtml(r), act, () => doRule(id));
 }
 
 function renderFinding(f) {
@@ -178,9 +283,11 @@ function renderFinding(f) {
     n++;
     const done = STATE.done_steps[s.id];
     const res = done ? resultText(done) : "";
-    const btn = s.disabled_reason
+    const act = s.disabled_reason
       ? `<span class="note">${esc(s.disabled_reason)}</span>`
       : `<button class="btn ${s.action.type === "goto" ? "ghost" : "primary"} small" data-step="${esc(s.id)}">${done ? "שוב" : esc(s.button)}</button>`;
+    const hasInfo = s.info || (s.info_rules && s.info_rules.length);
+    const btn = `<div class="step-actions">${hasInfo ? `<button class="i-btn" data-info="${esc(s.id)}" title="מידע מפורט" aria-label="מידע מפורט על ${esc(s.title)}">i</button>` : ""}${act}</div>`;
     return `<div class="step ${done ? "done" : ""}">
       <div class="step-n">${done ? "✓" : n}</div>
       <div class="step-body">
@@ -257,6 +364,7 @@ function renderClean() {
   $("#tab-clean").innerHTML = html;
   $("#tab-clean").querySelectorAll("[data-f]").forEach((c) => c.addEventListener("click", () => { safetyFilter = c.dataset.f; renderClean(); }));
   $("#tab-clean").querySelectorAll("[data-rule]").forEach((b) => b.addEventListener("click", () => doRule(b.dataset.rule)));
+  $("#tab-clean").querySelectorAll("[data-rinfo]").forEach((b) => b.addEventListener("click", () => showRuleInfo(b.dataset.rinfo)));
   bindFileButtons($("#tab-clean"));
 }
 
@@ -271,7 +379,8 @@ function ruleCard(r) {
   const paths = r.paths && r.paths.length
     ? `<details class="paths"><summary>מיקום (${r.paths.length})</summary><ul>${r.paths.map((p) => `<li class="mono">${esc(p)}</li>`).join("")}</ul></details>` : "";
   return `<div class="card">
-    <div class="card-head"><h3>${esc(r.title)}</h3>${badge(r.safety)}<span class="size">${fmt(r.size)}</span></div>
+    <div class="card-head"><h3>${esc(r.title)}</h3>${badge(r.safety)}<span class="size">${fmt(r.size)}</span>
+      <button class="i-btn" data-rinfo="${esc(r.id)}" title="מידע מפורט" aria-label="מידע מפורט על ${esc(r.title)}">i</button></div>
     <dl class="explain">
       <dt>מה זה?</dt><dd>${esc(r.what)}</dd>
       <dt>האם בטוח למחוק?</dt><dd>${esc(r.if_deleted)}</dd>

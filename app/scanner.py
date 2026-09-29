@@ -231,10 +231,15 @@ def measure_rules(progress=None):
             item["size"], item["paths"] = None, []
         else:
             found = rule_paths(r)
-            item["paths"] = found
-            item["size"] = sum(tree_size(p) for p in found)
             if not found:
                 continue  # לא קיים במחשב הזה
+            sizes = [dict(path=p, size=tree_size(p)) for p in found]
+            sizes.sort(key=lambda x: -x["size"])
+            item["paths"] = found
+            item["path_sizes"] = sizes
+            item["size"] = sum(x["size"] for x in sizes)
+        item["min_age_days"] = r.get("min_age_days", 0)
+        item["details"] = rules.rule_details(r["id"])
         results.append(item)
     return results
 

@@ -79,6 +79,22 @@
   </div>
 </div>
 
+<!-- חלון מידע מפורט (כפתור i) -->
+<div class="modal hidden" id="info" role="dialog" aria-modal="true" aria-labelledby="iTitle">
+  <div class="modal-card info-card">
+    <div class="modal-head">
+      <span class="info-ic" aria-hidden="true">i</span>
+      <h3 id="iTitle"></h3>
+      <button class="x-btn" id="iClose" aria-label="סגור">✕</button>
+    </div>
+    <div class="modal-body" id="iBody"></div>
+    <div class="modal-foot">
+      <button class="btn primary" id="iAct"></button>
+      <button class="btn ghost" id="iNo">סגור</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast hidden" id="toast"></div>
 
 <script src="app.js"></script>
